@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 const items = [
   { href: "/", label: "Камп Ноу", hint: "Головна" },
@@ -51,7 +52,8 @@ export default function Sidebar() {
       </div>
 
       <div className="hairline mb-4" />
-      <p className="text-[11px] text-muted leading-relaxed">
+      <TelegramLoginButton />
+      <p className="text-[11px] text-muted leading-relaxed mt-3">
         Оцінюй гравців після кожного матчу.
         Один голос на матч через Telegram.
       </p>
