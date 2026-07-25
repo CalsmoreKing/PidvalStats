@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope, Space_Mono } from "next/font/google";
+import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 
-const display = Fraunces({
+const display = Alegreya({
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "600", "900"],
+  weight: ["400", "700", "900"],
   variable: "--font-display",
 });
 const body = Manrope({
@@ -13,8 +13,8 @@ const body = Manrope({
   weight: ["400", "500", "700"],
   variable: "--font-body",
 });
-const utility = Space_Mono({
-  subsets: ["latin"],
+const utility = JetBrains_Mono({
+  subsets: ["latin", "cyrillic"],
   weight: ["400", "700"],
   variable: "--font-utility",
 });
