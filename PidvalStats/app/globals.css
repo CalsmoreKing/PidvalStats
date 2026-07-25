@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Fraunces", serif;
+  --font-body: "Manrope", sans-serif;
+  --font-utility: "Space Mono", monospace;
+  --line-gold: rgba(212, 175, 55, 0.16);
+}
+
+html,
+body {
+  background: #0b0714;
+  color: #f2ede3;
+}
+
+body {
+  font-family: var(--font-body);
+  min-height: 100dvh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------------
+   Signature ambient background — Champions League trophy watermark,
+   faint, slowly "breathing" behind all content. Requested explicitly
+   in the brief: near-invisible but present.
+--------------------------------------------------------------- */
+.trophy-watermark {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("/trophy-watermark.svg");
+  background-repeat: no-repeat;
+  background-position: center 8%;
+  background-size: min(70vw, 900px);
+  animation: breathe 14s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.bg-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(109, 40, 217, 0.16), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.05), transparent 50%);
+}
+
+.hairline {
+  height: 1px;
+  background: linear-gradient(90deg, var(--line-gold), transparent);
+}
+
+/* ---------------------------------------------------------------
+   Signature element — gold "medal seal" rating badge with a
+   perforated ticket-stub edge. Used on player cards and match MVP.
+--------------------------------------------------------------- */
+.medal-seal {
+  position: relative;
+  background: radial-gradient(circle at 35% 30%, #f3cc5c, #d4af37 55%, #8a6f22 100%);
+  color: #17102a;
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5), 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.medal-seal::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  border: 1px dashed rgba(23, 16, 42, 0.35);
+}
+
+.ticket-edge {
+  --notch: 8px;
+  mask-image: radial-gradient(
+      circle at 0 50%,
+      transparent var(--notch),
+      black calc(var(--notch) + 0.5px)
+    ),
+    radial-gradient(
+      circle at 100% 50%,
+      transparent var(--notch),
+      black calc(var(--notch) + 0.5px)
+    );
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+.eyebrow {
+  font-family: var(--font-utility);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: #c9a876;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy-watermark,
+  .animate-breathe,
+  .animate-gold-sweep {
+    animation: none !important;
+  }
+}
