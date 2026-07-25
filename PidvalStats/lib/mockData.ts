@@ -90,3 +90,35 @@ export const mockMatches: MockMatch[] = [
 export const mockTopMatches = mockMatches
   .filter((m) => m.avgRating)
   .sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
+
+// Мокова стартова 11 у розстановці 4-2-3-1, координати у % по полю
+// (x: 0=ліво, 100=право; y: 0=атака/верх, 100=свої ворота/низ)
+export type LineupSlot = {
+  playerId: string;
+  name: string;
+  jersey: number;
+  x: number;
+  y: number;
+  rating?: number;
+};
+
+export const mockCoach = { name: "Ганcі Флік" };
+
+export const mockLineup: LineupSlot[] = [
+  { playerId: "gk", name: "тер Штеген", jersey: 1, x: 50, y: 92, rating: 7.2 },
+  { playerId: "lb", name: "Бальде", jersey: 3, x: 15, y: 74, rating: 7.5 },
+  { playerId: "cb1", name: "Крістенсен", jersey: 15, x: 37, y: 78, rating: 6.9 },
+  { playerId: "cb2", name: "Кубарсі", jersey: 5, x: 63, y: 78, rating: 7.1 },
+  { playerId: "rb", name: "Кунде", jersey: 23, x: 85, y: 74, rating: 7.0 },
+  { playerId: "dm1", name: "Касадо", jersey: 17, x: 35, y: 58, rating: 6.8 },
+  { playerId: "dm2", name: "де Йонг", jersey: 21, x: 65, y: 58, rating: 7.4 },
+  { playerId: "lw", name: "Рафінья", jersey: 11, x: 18, y: 38, rating: 7.8 },
+  { playerId: "cam", name: "Педрі", jersey: 8, x: 50, y: 40, rating: 8.1 },
+  { playerId: "rw", name: "Ямаль", jersey: 10, x: 82, y: 38, rating: 8.4 },
+  { playerId: "fw", name: "Ф. Торрес", jersey: 7, x: 50, y: 16, rating: 6.7 },
+];
+
+export const mockSubs = [
+  { playerId: "sub1", name: "Фермін Лопес", jersey: 16, inMinute: 68, rating: 7.0 },
+  { playerId: "sub2", name: "Гаві", jersey: 6, inMinute: 75, rating: 6.5 },
+];

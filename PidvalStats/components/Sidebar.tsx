@@ -16,12 +16,8 @@ export default function Sidebar() {
   return (
     <aside className="w-[220px] shrink-0 border-r border-white/5 bg-panel/40 backdrop-blur-sm px-6 py-8 hidden md:flex md:flex-col md:justify-between">
       <div>
-        <div className="mb-12">
-          <div className="eyebrow">Сезон 26/27</div>
-          <div className="font-display text-2xl font-semibold text-ivory mt-1">
-            Барселона
-          </div>
-        </div>
+        {/* TODO: сюди піде логотип клубу, коли буде готовий файл */}
+        <div className="mb-12 h-10" />
 
         <nav className="flex flex-col gap-1">
           {items.map((item) => {
@@ -51,12 +47,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div className="hairline mb-4" />
       <TelegramLoginButton />
-      <p className="text-[11px] text-muted leading-relaxed mt-3">
-        Оцінюй гравців після кожного матчу.
-        Один голос на матч через Telegram.
-      </p>
     </aside>
   );
 }

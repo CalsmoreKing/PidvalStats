@@ -13,7 +13,7 @@ const competitionTabs = ["Всі", "Ла Ліга", "Кубок Іспанії",
 
 export default function SeasonPage() {
   return (
-    <div className="px-6 md:px-12 py-10 max-w-6xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-6xl mx-auto">
       <div className="eyebrow mb-3">Підсумки</div>
       <h1 className="font-display text-4xl text-ivory mb-8">Сезон 26/27</h1>
 
@@ -47,7 +47,7 @@ export default function SeasonPage() {
           </thead>
           <tbody className="divide-y divide-white/5">
             {seasonRows.map((p, i) => (
-              <tr key={p.id} className="bg-panel hover:bg-white/[0.03] transition-colors">
+              <tr key={p.id} className="bg-panel/80 hover:bg-transparent transition-colors">
                 <td className="px-5 py-4 font-display text-gold/50">{i + 1}</td>
                 <td className="px-5 py-4 text-ivory">{p.full_name}</td>
                 <td className="px-5 py-4 text-right font-utility text-muted">
@@ -63,7 +63,7 @@ export default function SeasonPage() {
                   {p.votes}
                 </td>
                 <td className="px-5 py-4 text-right">
-                  <span className="inline-block medal-seal rounded-full h-8 w-12 flex items-center justify-center font-utility text-xs font-bold">
+                  <span className="rating-star inline-flex h-9 w-9 items-center justify-center font-utility text-xs font-bold">
                     {p.season_rating?.toFixed(1)}
                   </span>
                 </td>

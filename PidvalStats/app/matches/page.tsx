@@ -25,7 +25,7 @@ function formatDateUk(iso: string) {
 
 export default function MatchesPage() {
   return (
-    <div className="px-6 md:px-12 py-10 max-w-4xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-4xl mx-auto">
       <div className="eyebrow mb-3">Календар</div>
       <h1 className="font-display text-4xl text-ivory mb-10">Матчі</h1>
 
@@ -38,11 +38,10 @@ export default function MatchesPage() {
               : "– : –";
           return (
             <div key={m.id}>
-              <div className="flex items-center gap-4 mb-4">
-                <span className="font-display text-lg text-gold-bright whitespace-nowrap">
+              <div className="mb-3">
+                <span className="font-display text-base text-gold-bright">
                   {formatDateUk(m.date)}
                 </span>
-                <div className="hairline flex-1" />
               </div>
 
               <Link

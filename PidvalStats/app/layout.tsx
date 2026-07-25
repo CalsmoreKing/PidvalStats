@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import { MobileTopBar, MobileBottomNav } from "@/components/MobileNav";
 
 const display = Alegreya({
   subsets: ["latin", "cyrillic"],
@@ -32,11 +33,12 @@ export default function RootLayout({
   return (
     <html lang="uk">
       <body className={`${display.variable} ${body.variable} ${utility.variable}`}>
-        <div className="trophy-watermark" aria-hidden />
-        <div className="bg-vignette" aria-hidden />
-        <div className="relative z-10 flex min-h-dvh">
+        <div className="bg-diagonal" aria-hidden />
+        <div className="relative z-10 flex min-h-dvh flex-col md:flex-row">
+          <MobileTopBar />
           <Sidebar />
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0 pb-16 md:pb-0">{children}</main>
+          <MobileBottomNav />
         </div>
       </body>
     </html>

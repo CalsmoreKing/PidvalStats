@@ -3,10 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --font-display: "Fraunces", serif;
+  --font-display: "Alegreya", serif;
   --font-body: "Manrope", sans-serif;
-  --font-utility: "Space Mono", monospace;
-  --line-gold: rgba(212, 175, 55, 0.16);
+  --font-utility: "JetBrains Mono", monospace;
 }
 
 html,
@@ -22,86 +21,43 @@ body {
   overflow-x: hidden;
 }
 
-/* ---------------------------------------------------------------
-   Signature ambient background — Champions League trophy watermark,
-   faint, slowly "breathing" behind all content. Requested explicitly
-   in the brief: near-invisible but present.
---------------------------------------------------------------- */
-.trophy-watermark {
+/* Діагональний фон 63% чорний / 37% фіолетовий, 45°, фіолетовий у нижньому правому куті */
+.bg-diagonal {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-image: url("/trophy-watermark.svg");
-  background-repeat: no-repeat;
-  background-position: center 8%;
-  background-size: min(70vw, 900px);
-  animation: breathe 14s ease-in-out infinite;
-  mix-blend-mode: screen;
-}
-
-.bg-vignette {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(109, 40, 217, 0.16), transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.05), transparent 50%);
-}
-
-.hairline {
-  height: 1px;
-  background: linear-gradient(90deg, var(--line-gold), transparent);
-}
-
-/* ---------------------------------------------------------------
-   Signature element — gold "medal seal" rating badge with a
-   perforated ticket-stub edge. Used on player cards and match MVP.
---------------------------------------------------------------- */
-.medal-seal {
-  position: relative;
-  background: radial-gradient(circle at 35% 30%, #f3cc5c, #d4af37 55%, #8a6f22 100%);
-  color: #17102a;
-  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5), 0 4px 14px rgba(0, 0, 0, 0.45);
-}
-
-.medal-seal::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: inherit;
-  border: 1px dashed rgba(23, 16, 42, 0.35);
-}
-
-.ticket-edge {
-  --notch: 8px;
-  mask-image: radial-gradient(
-      circle at 0 50%,
-      transparent var(--notch),
-      black calc(var(--notch) + 0.5px)
-    ),
-    radial-gradient(
-      circle at 100% 50%,
-      transparent var(--notch),
-      black calc(var(--notch) + 0.5px)
-    );
-  mask-composite: intersect;
-  -webkit-mask-composite: source-in;
+  background: linear-gradient(
+    45deg,
+    #0b0714 0%,
+    #0b0714 63%,
+    #3b1568 100%
+  );
 }
 
 .eyebrow {
   font-family: var(--font-utility);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #c9a876;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .trophy-watermark,
-  .animate-breathe,
-  .animate-gold-sweep {
-    animation: none !important;
-  }
+/* ---------------------------------------------------------------
+   Зірка-бейдж з оцінкою — 20 кінців, лежить поверх банера гравця,
+   виступає за його межі (нижній правий кут).
+--------------------------------------------------------------- */
+.rating-star {
+  clip-path: polygon(
+    50.00% 0.00%, 55.94% 12.47%, 65.45% 2.45%, 67.25% 16.14%, 79.39% 9.55%,
+    76.87% 23.13%, 90.45% 20.61%, 83.86% 32.75%, 97.55% 34.55%, 87.53% 44.06%,
+    100.00% 50.00%, 87.53% 55.94%, 97.55% 65.45%, 83.86% 67.25%, 90.45% 79.39%,
+    76.87% 76.87%, 79.39% 90.45%, 67.25% 83.86%, 65.45% 97.55%, 55.94% 87.53%,
+    50.00% 100.00%, 44.06% 87.53%, 34.55% 97.55%, 32.75% 83.86%, 20.61% 90.45%,
+    23.13% 76.87%, 9.55% 79.39%, 16.14% 67.25%, 2.45% 65.45%, 12.47% 55.94%,
+    0.00% 50.00%, 12.47% 44.06%, 2.45% 34.55%, 16.14% 32.75%, 9.55% 20.61%,
+    23.13% 23.13%, 20.61% 9.55%, 32.75% 16.14%, 34.55% 2.45%, 44.06% 12.47%
+  );
+  background: radial-gradient(circle at 35% 30%, #f3cc5c, #d4af37 55%, #8a6f22 100%);
+  color: #17102a;
 }
