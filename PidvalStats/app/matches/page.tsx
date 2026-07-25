@@ -16,62 +16,68 @@ function statusLabel(status: MockMatch["status"]) {
   }
 }
 
-function formatDateUk(iso: string) {
-  return new Date(iso).toLocaleDateString("uk-UA", {
-    day: "numeric",
-    month: "long",
-  });
+function monthLabelUk(iso: string) {
+  return new Date(iso).toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
+}
+function dayLabelUk(iso: string) {
+  return new Date(iso).toLocaleDateString("uk-UA", { day: "numeric", month: "long" });
 }
 
 export default function MatchesPage() {
-  return (
-    <div className="px-4 md:px-12 py-8 max-w-4xl mx-auto">
-      <div className="eyebrow mb-3">Календар</div>
-      <h1 className="font-display text-4xl text-ivory mb-10">Матчі</h1>
+  const sorted = [...mockMatches].sort((a, b) => b.date.localeCompare(a.date));
+  let lastMonth = "";
 
-      <div className="flex flex-col gap-10">
-        {mockMatches.map((m) => {
+  return (
+    <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
+      <div className="eyebrow mb-1">Календар та</div>
+      <h1 className="font-display text-3xl text-ivory mb-8">Матчі</h1>
+
+      <div className="flex flex-col gap-3">
+        {sorted.map((m) => {
+          const month = monthLabelUk(m.date);
+          const showMonthHeader = month !== lastMonth;
+          lastMonth = month;
           const status = statusLabel(m.status);
           const score =
             m.homeScore != null && m.awayScore != null
-              ? `${m.homeScore} : ${m.awayScore}`
-              : "– : –";
+              ? `${m.homeScore}:${m.awayScore}`
+              : "–:–";
+
           return (
             <div key={m.id}>
-              <div className="mb-3">
-                <span className="font-display text-base text-gold-bright">
-                  {formatDateUk(m.date)}
-                </span>
-              </div>
+              {showMonthHeader ? (
+                <div className="font-display text-lg text-gold-bright capitalize mt-4 mb-2 first:mt-0">
+                  {month}
+                </div>
+              ) : (
+                <div className="text-[11px] text-muted/70 mt-1 mb-1 pl-1">
+                  {dayLabelUk(m.date)}
+                </div>
+              )}
 
               <Link
                 href={`/matches/${m.id}`}
-                className="block rounded-xl border border-white/5 bg-panel hover:border-gold/30 transition-colors px-6 py-5"
+                className="relative block rounded-xl border border-white/5 bg-panel px-4 py-4"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-panel-raised flex items-center justify-center font-utility text-xs text-muted">
-                      FCB
-                    </div>
-                    <span className="text-ivory">
-                      {m.isHome ? "Барселона" : m.opponent}
-                    </span>
+                {m.avgRating != null && (
+                  <div className="rating-star absolute -top-2 -right-2 h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
+                    {m.avgRating.toFixed(1)}
                   </div>
+                )}
 
-                  <div className="font-utility text-2xl text-gold-bright tracking-wider">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <span className="text-ivory text-sm text-right truncate">
+                    {m.isHome ? "Барселона" : m.opponent}
+                  </span>
+                  <span className="font-utility text-lg text-gold-bright tracking-wider px-2 whitespace-nowrap">
                     {score}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="text-ivory">
-                      {m.isHome ? m.opponent : "Барселона"}
-                    </span>
-                    <div className="h-10 w-10 rounded-full bg-panel-raised flex items-center justify-center font-utility text-xs text-muted">
-                      {m.opponent.slice(0, 3).toUpperCase()}
-                    </div>
-                  </div>
+                  </span>
+                  <span className="text-ivory text-sm text-left truncate">
+                    {m.isHome ? m.opponent : "Барселона"}
+                  </span>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
+
+                <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted">{m.competition}</span>
                   <span className={`text-xs ${status.color}`}>{status.text}</span>
                 </div>

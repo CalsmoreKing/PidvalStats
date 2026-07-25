@@ -1,10 +1,16 @@
 import { mockMatches, mockCoach, mockLineup, mockSubs } from "@/lib/mockData";
 import { notFound } from "next/navigation";
 import FormationPitch from "@/components/FormationPitch";
+import VotingForm, { VotablePlayer } from "@/components/VotingForm";
 
 export default function MatchDetailPage({ params }: { params: { id: string } }) {
   const match = mockMatches.find((m) => m.id === params.id);
   if (!match) return notFound();
+
+  const votablePlayers: VotablePlayer[] = [
+    ...mockLineup.map((s) => ({ playerId: s.playerId, name: s.name, jersey: s.jersey })),
+    ...mockSubs.map((s) => ({ playerId: s.playerId, name: s.name, jersey: s.jersey, isSub: true })),
+  ];
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
@@ -30,10 +36,16 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
 
       <FormationPitch coach={mockCoach} lineup={mockLineup} subs={mockSubs} />
 
-      {/* TODO: коли матч у статусі 'voting_open' — тут же під схемою рендерити
-          для кожного гравця кнопки 1–10 + окрему зірку MVP, і POST на
-          /api/votes та /api/mvp-votes. Поки голосування не завершене —
-          оцінки нікому не показуються, включно з адміном. */}
+      {match.status === "voting_open" && (
+        <div className="mt-10">
+          <h2 className="font-display text-xl text-ivory mb-1">Голосування</h2>
+          <p className="text-xs text-muted mb-4">
+            Онови всім гравцям оцінку 1–10 і, за бажанням, обери MVP — голос
+            зараховується одним пакетом, коли натиснеш «Надіслати».
+          </p>
+          <VotingForm matchId={match.id} players={votablePlayers} />
+        </div>
+      )}
     </div>
   );
 }

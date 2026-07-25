@@ -11,7 +11,7 @@ export default function CampNouPage() {
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="font-display text-xl text-ivory">Топ‑3 гравці сезону</h2>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {mockTopPlayers.map((p) => (
             <PlayerCard key={p.id} player={p} />
           ))}

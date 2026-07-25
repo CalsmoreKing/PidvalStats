@@ -64,6 +64,16 @@ export const mockMatches: MockMatch[] = [
     awayScore: null,
   },
   {
+    id: "m4",
+    date: "2026-07-25",
+    opponent: "Жирона",
+    isHome: true,
+    competition: "Ла Ліга",
+    status: "voting_open",
+    homeScore: 2,
+    awayScore: 1,
+  },
+  {
     id: "m2",
     date: "2026-07-22",
     opponent: "Атлетіко Мадрид",

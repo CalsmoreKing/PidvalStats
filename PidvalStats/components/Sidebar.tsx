@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 const items = [
-  { href: "/", label: "Камп Ноу", hint: "Головна" },
+  { href: "/", label: "Головна", hint: "Камп Ноу" },
   { href: "/matches", label: "Матчі", hint: "Календар" },
   { href: "/season", label: "Сезон", hint: "Таблиця" },
 ];
