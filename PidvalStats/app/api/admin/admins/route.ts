@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { createAuthedSupabase, getVoterIdFromCookie } from "@/lib/supabase/authed";
 import { getAdminInfo } from "@/lib/admin";

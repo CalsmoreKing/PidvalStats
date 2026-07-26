@@ -33,7 +33,7 @@ export default function BotLoginButton({ onLoggedIn }: { onLoggedIn: () => void 
   function startPolling(t: string) {
     tokenRef.current = t;
     setConfirming(true);
-    pollRef.current = setInterval(() => checkOnce(t), 2000);
+    pollRef.current = setInterval(() => checkOnce(t), 1500);
 
     // Мобільні браузери призупиняють таймери на фоновій вкладці, поки людина
     // в застосунку Telegram — тому додатково перевіряємо одразу, щойно
@@ -55,8 +55,6 @@ export default function BotLoginButton({ onLoggedIn }: { onLoggedIn: () => void 
     <div className="flex flex-col items-start gap-1">
       <a
         href={`https://t.me/${botUsername}?start=${token}`}
-        target="_blank"
-        rel="noopener noreferrer"
         onClick={() => startPolling(token)}
         className="flex items-center gap-2 rounded-full bg-gold text-void text-xs font-medium px-3 py-2"
       >
