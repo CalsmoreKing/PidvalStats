@@ -3,6 +3,7 @@ import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { MobileTopBar, MobileBottomNav } from "@/components/MobileNav";
+import AccountPanel from "@/components/AccountPanel";
 
 const display = Alegreya({
   subsets: ["latin", "cyrillic"],
@@ -39,6 +40,7 @@ export default function RootLayout({
           <Sidebar />
           <main className="flex-1 min-w-0 pb-16 md:pb-0">{children}</main>
           <MobileBottomNav />
+          <AccountPanel />
         </div>
       </body>
     </html>

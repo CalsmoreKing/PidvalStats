@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 const items = [
   { href: "/", label: "Головна", hint: "Камп Ноу" },
@@ -48,8 +47,7 @@ export default function Sidebar() {
       </div>
 
       <div>
-        <TelegramLoginButton />
-        <Link href="/admin" className="block mt-3 text-xs text-muted hover:text-gold-bright">
+        <Link href="/admin" className="block text-xs text-muted hover:text-gold-bright">
           Адмінка →
         </Link>
       </div>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 const items = [
   { href: "/", label: "Камп Ноу" },
@@ -14,7 +13,6 @@ export function MobileTopBar() {
   return (
     <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-panel/60 backdrop-blur-sm sticky top-0 z-20">
       <span className="font-display text-lg text-ivory">Барселона</span>
-      <TelegramLoginButton />
     </div>
   );
 }
