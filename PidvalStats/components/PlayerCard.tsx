@@ -8,45 +8,46 @@ export type PlayerCardData = {
   nationality: string;
   birth_date: string; // ISO
   jersey_number: number | null;
-  photo_url: string | null;
+  photo_url: string | null; // очікується PNG з прозорим фоном (вирізаний портрет)
   season_rating?: number | null;
 };
 
-// Великий банер гравця, ~2:1 (90×45) — фото зліва на весь зріст банера,
-// прапор національності тьмяно на фоні, інфо-блок справа,
-// велика зірка-оцінка виступає за нижній правий кут.
+// Великий банер гравця, ~2:1 — прапор національності на весь банер
+// (під делікатним нахилом, теж і під фото), фото-вирізка (PNG, прозорий фон)
+// стоїть просто на прапорі, інфо-блок і велика зірка-оцінка справа.
 export default function PlayerCard({ player }: { player: PlayerCardData }) {
   const age = calcAge(player.birth_date);
 
   return (
     <div className="relative aspect-[2/1] rounded-2xl overflow-visible">
       <div className="absolute inset-0 rounded-2xl overflow-hidden bg-panel border border-white/5">
-        {/* Прапор — тьмяний фон на всю картку */}
+        {/* Прапор — на весь банер, під легким нахилом, векторний (без пікселізації) */}
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-25 scale-110"
-          style={{ backgroundImage: `url(${flagUrl(player.nationality)})` }}
+          className="absolute -inset-6"
+          style={{
+            backgroundImage: `url(${flagUrl(player.nationality, "svg")})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            transform: "rotate(-4deg) scale(1.3)",
+          }}
           aria-hidden
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-panel/10 via-panel/70 to-panel" aria-hidden />
+        {/* Тонування для читабельності тексту справа, зліва прапор лишається виразним */}
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-panel/25 via-panel/70 to-panel/95"
+          aria-hidden
+        />
 
         <div className="relative h-full flex items-stretch">
-          {/* Фото на весь зріст банера */}
-          <div className="w-[42%] shrink-0 h-full bg-panel-raised flex items-end justify-center overflow-hidden">
-            {player.photo_url ? (
+          {/* Фото-вирізка стоїть на прапорі, знизу банера */}
+          <div className="w-[44%] shrink-0 h-full flex items-end justify-center">
+            {player.photo_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={player.photo_url}
                 alt={player.full_name}
-                className="h-full w-full object-cover object-top"
+                className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
               />
-            ) : (
-              <span className="font-display text-4xl text-ivory/10 pb-2">
-                {player.full_name
-                  .split(" ")
-                  .map((w) => w[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
             )}
           </div>
 
@@ -64,7 +65,7 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
       </div>
 
       {player.jersey_number != null && (
-        <div className="absolute top-3 left-3 font-utility text-sm text-gold-bright/80">
+        <div className="absolute top-3 left-3 font-utility text-sm text-gold-bright/80 drop-shadow">
           {player.jersey_number}
         </div>
       )}

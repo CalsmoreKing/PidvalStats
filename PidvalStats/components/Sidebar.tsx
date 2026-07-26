@@ -47,7 +47,12 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <TelegramLoginButton />
+      <div>
+        <TelegramLoginButton />
+        <Link href="/admin" className="block mt-3 text-xs text-muted hover:text-gold-bright">
+          Адмінка →
+        </Link>
+      </div>
     </aside>
   );
 }

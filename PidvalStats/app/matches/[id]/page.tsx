@@ -1,29 +1,57 @@
-import { mockMatches, mockCoach, mockLineup, mockSubs } from "@/lib/mockData";
 import { notFound } from "next/navigation";
 import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
+import { getMatchById, getLineupForMatch } from "@/lib/queries";
+import { layoutFormation } from "@/lib/formation";
 
-export default function MatchDetailPage({ params }: { params: { id: string } }) {
-  const match = mockMatches.find((m) => m.id === params.id);
+export const dynamic = "force-dynamic";
+
+export default async function MatchDetailPage({ params }: { params: { id: string } }) {
+  const match: any = await getMatchById(params.id);
   if (!match) return notFound();
 
-  const votablePlayers: VotablePlayer[] = [
-    ...mockLineup.map((s) => ({ playerId: s.playerId, name: s.name, jersey: s.jersey })),
-    ...mockSubs.map((s) => ({ playerId: s.playerId, name: s.name, jersey: s.jersey, isSub: true })),
-  ];
+  const lineupRows: any[] = await getLineupForMatch(params.id);
+
+  const starters = lineupRows
+    .filter((r) => r.is_starting)
+    .map((r) => ({
+      id: r.players.id,
+      name: r.players.full_name,
+      jersey: r.players.jersey_number,
+      position: r.players.position,
+      rating: r.avg_rating,
+      isCaptain: r.is_captain,
+    }));
+  const subs = lineupRows
+    .filter((r) => !r.is_starting)
+    .map((r) => ({
+      id: r.players.id,
+      name: r.players.full_name,
+      jersey: r.players.jersey_number,
+      rating: r.avg_rating,
+    }));
+
+  const pitchSlots = layoutFormation(starters);
+
+  const votablePlayers: VotablePlayer[] = lineupRows.map((r) => ({
+    playerId: r.players.id,
+    name: r.players.full_name,
+    jersey: r.players.jersey_number,
+    isSub: !r.is_starting,
+  }));
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
-      <div className="eyebrow mb-3">{match.competition}</div>
+    <div className="px-4 md:px-12 py-8 max-w-2xl md:max-w-3xl mx-auto">
+      <div className="eyebrow mb-3">{match.competitions?.name}</div>
       <h1 className="font-display text-2xl md:text-4xl text-ivory mb-6">
-        {match.isHome ? "Барселона" : match.opponent} —{" "}
-        {match.isHome ? match.opponent : "Барселона"}
+        {match.is_home ? "Барселона" : match.opponent_name} —{" "}
+        {match.is_home ? match.opponent_name : "Барселона"}
       </h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {[
-          { label: "Стадіон", value: "—" },
-          { label: "Рефері", value: "—" },
+          { label: "Стадіон", value: match.venue ?? "—" },
+          { label: "Рефері", value: match.referee ?? "—" },
           { label: "Капітан", value: "—" },
           { label: "Статус", value: match.status },
         ].map((row) => (
@@ -34,9 +62,16 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
         ))}
       </div>
 
-      <FormationPitch coach={mockCoach} lineup={mockLineup} subs={mockSubs} />
+      {lineupRows.length === 0 ? (
+        <p className="text-sm text-muted mb-8">
+          Склад ще не внесено — з'явиться тут, коли адмін додасть стартову
+          11 і заміни.
+        </p>
+      ) : (
+        <FormationPitch coach={match.coach_name} lineup={pitchSlots} subs={subs} />
+      )}
 
-      {match.status === "voting_open" && (
+      {match.status === "voting_open" && votablePlayers.length > 0 && (
         <div className="mt-10">
           <h2 className="font-display text-xl text-ivory mb-1">Голосування</h2>
           <p className="text-xs text-muted mb-4">

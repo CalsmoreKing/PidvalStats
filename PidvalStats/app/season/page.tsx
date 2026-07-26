@@ -1,23 +1,33 @@
-import { mockTopPlayers } from "@/lib/mockData";
 import SeasonTable from "@/components/SeasonTable";
+import { getSeasonRows } from "@/lib/queries";
 
-// TODO: замінити на запит до view `season_stats` / `season_stats_by_competition`
-const seasonRows = mockTopPlayers.map((p, i) => ({
-  id: p.id,
-  full_name: p.full_name,
-  goals: [9, 5, 1][i] ?? 0,
-  assists: [8, 6, 0][i] ?? 0,
-  votes: [412, 388, 301][i] ?? 0,
-  matches: [22, 24, 20][i] ?? 0,
-  season_rating: p.season_rating,
-}));
+export const dynamic = "force-dynamic";
 
-export default function SeasonPage() {
+export default async function SeasonPage() {
+  const raw = await getSeasonRows();
+
+  const rows = raw.map((p: any) => ({
+    id: p.player_id,
+    full_name: p.full_name,
+    matches: p.matches_rated ?? 0,
+    goals: p.total_goals ?? 0,
+    assists: p.total_assists ?? 0,
+    votes: p.total_votes ?? 0,
+    season_rating: p.weighted_season_rating,
+  }));
+
   return (
     <div className="px-4 md:px-12 py-8 max-w-6xl mx-auto">
       <div className="eyebrow mb-3">Підсумки</div>
       <h1 className="font-display text-4xl text-ivory mb-8">Сезон 26/27</h1>
-      <SeasonTable rows={seasonRows} />
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted">
+          Ще немає жодного підсумованого матчу — таблиця заповниться після
+          першого завершеного голосування.
+        </p>
+      ) : (
+        <SeasonTable rows={rows} />
+      )}
     </div>
   );
 }
