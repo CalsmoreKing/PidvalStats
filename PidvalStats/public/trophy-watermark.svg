@@ -1,0 +1,22 @@
+<svg width="800" height="900" viewBox="0 0 800 900" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Абстрактний силует кубка-заглушка (не логотип УЄФА чи будь-якого бренду).
+    Заміни на власне фото трофея (напівпрозоре, як у брифі) —
+    просто поклади файл як /public/trophy-watermark.png(.svg)
+    і онови посилання в globals.css (.trophy-watermark → background-image).
+  -->
+  <defs>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3CC5C" />
+      <stop offset="100%" stop-color="#8A6F22" />
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#goldGrad)" stroke-width="3" opacity="0.9">
+    <path d="M300 120 Q300 260 400 300 Q500 260 500 120 Z" />
+    <path d="M300 140 C180 140 150 260 230 320 C270 350 300 340 300 340" />
+    <path d="M500 140 C620 140 650 260 570 320 C530 350 500 340 500 340" />
+    <rect x="370" y="300" width="60" height="160" />
+    <path d="M300 460 Q400 500 500 460 L520 520 Q400 560 280 520 Z" />
+    <rect x="260" y="520" width="280" height="30" rx="6" />
+  </g>
+</svg>
