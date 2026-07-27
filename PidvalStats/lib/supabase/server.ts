@@ -12,7 +12,8 @@ export function createServerSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
-        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
       },
       cookies: {
         get(name: string) {

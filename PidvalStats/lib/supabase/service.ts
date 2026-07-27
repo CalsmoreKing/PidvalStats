@@ -13,7 +13,8 @@ export function createServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       global: {
-        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
       },
       auth: { persistSession: false },
     }
