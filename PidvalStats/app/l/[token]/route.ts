@@ -13,7 +13,6 @@ function serviceClient() {
 
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
   const supabase = serviceClient();
-  const home = new URL("/", req.url);
 
   const { data: row } = await supabase
     .from("login_tokens")
@@ -22,9 +21,10 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
     .maybeSingle();
 
   // Токен вже міг бути "з'їдений" фоновим опитуванням на іншій вкладці —
-  // це нормально, значить вхід уже відбувся, просто ведемо на головну.
+  // це нормально, значить вхід уже відбувся. Але якщо ні — кажемо про це
+  // прямо в URL, замість тихо вести на головну, ніби нічого не сталось.
   if (!row || !row.voter_id) {
-    return NextResponse.redirect(home);
+    return NextResponse.redirect(new URL("/?login=expired", req.url));
   }
 
   const sessionToken = jwt.sign(
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
 
   await supabase.from("login_tokens").delete().eq("token", params.token);
 
-  const res = NextResponse.redirect(home);
+  const res = NextResponse.redirect(new URL("/?login=ok", req.url));
   res.cookies.set("barca_session", sessionToken, {
     httpOnly: true,
     secure: true,

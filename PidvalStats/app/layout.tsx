@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Alegreya, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
@@ -40,7 +41,9 @@ export default function RootLayout({
           <Sidebar />
           <main className="flex-1 min-w-0 pb-16 md:pb-0">{children}</main>
           <MobileBottomNav />
-          <AccountPanel />
+          <Suspense fallback={null}>
+            <AccountPanel />
+          </Suspense>
         </div>
       </body>
     </html>
