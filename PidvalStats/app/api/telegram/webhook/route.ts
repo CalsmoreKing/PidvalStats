@@ -13,7 +13,15 @@ async function sendMessage(chatId: number, text: string) {
   const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      // КРИТИЧНО: без цього Telegram сам "заходить" за посиланням у тексті,
+      // щоб згенерувати прев'ю картки — і одноразовий токен "згорає" від
+      // цього автоматичного заходу ще до того, як людина встигає тицьнути.
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true, // для старіших клієнтів Bot API
+    }),
   });
   if (!res.ok) {
     console.error("webhook: sendMessage не вдався", res.status, await res.text());

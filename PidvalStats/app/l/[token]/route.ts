@@ -27,8 +27,10 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
     { expiresIn: "30d" }
   );
 
-  await supabase.from("login_tokens").delete().eq("token", params.token);
-
+  // Токен свідомо НЕ видаляємо тут — робимо цей перехід idempotent, щоб
+  // повторний або передчасний захід (наприклад, ще одним сканером
+  // посилань) не "спалював" його для реальної людини. Застарілі токени
+  // прибираються самі при створенні наступного (див. telegram-token/route.ts).
   const res = NextResponse.redirect(new URL("/?login=ok", req.url));
   res.cookies.set("barca_session", sessionToken, {
     httpOnly: true,

@@ -28,9 +28,8 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
     { expiresIn: "30d" }
   );
 
-  // Одноразовий токен — прибираємо одразу після використання
-  await supabase.from("login_tokens").delete().eq("token", params.token);
-
+  // Токен свідомо НЕ видаляємо тут (той самий принцип, що й у /l/[token]) —
+  // застарілі рядки прибирає /api/auth/telegram-token при створенні наступного.
   const res = NextResponse.json({ status: "claimed" });
   res.cookies.set("barca_session", sessionToken, {
     httpOnly: true,
