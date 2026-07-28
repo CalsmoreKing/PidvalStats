@@ -1,22 +1,18 @@
 import Link from "next/link";
 import { getAllMatches } from "@/lib/queries";
+import { matchStatusLabel } from "@/lib/display";
+import VotingCountdown from "@/components/VotingCountdown";
 
 export const dynamic = "force-dynamic";
 
-function statusLabel(status: string) {
+function statusColor(status: string) {
   switch (status) {
-    case "scheduled":
-      return { text: "Заплановано", color: "text-muted" };
     case "live":
-      return { text: "Наживо", color: "text-gold-bright animate-pulse" };
-    case "finished":
-      return { text: "Матч завершено", color: "text-muted" };
+      return "text-gold-bright animate-pulse";
     case "voting_open":
-      return { text: "Голосування відкрите", color: "text-gold-bright" };
-    case "finalized":
-      return { text: "Підсумовано", color: "text-muted" };
+      return "text-gold-bright";
     default:
-      return { text: status, color: "text-muted" };
+      return "text-muted";
   }
 }
 
@@ -46,7 +42,6 @@ export default async function MatchesPage() {
             const month = monthLabelUk(m.match_date);
             const showMonthHeader = month !== lastMonth;
             lastMonth = month;
-            const status = statusLabel(m.status);
             const score =
               m.home_score != null && m.away_score != null
                 ? `${m.home_score}:${m.away_score}`
@@ -75,20 +70,36 @@ export default async function MatchesPage() {
                   )}
 
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                    <span className="text-ivory text-sm text-right truncate">
+                    <span className="text-ivory text-sm text-right truncate flex items-center justify-end gap-2">
                       {m.is_home ? "Барселона" : m.opponent_name}
+                      {!m.is_home && m.opponent_crest_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.opponent_crest_url} alt="" className="h-5 w-5 object-contain" />
+                      )}
                     </span>
                     <span className="font-utility text-lg text-gold-bright tracking-wider px-2 whitespace-nowrap">
                       {score}
                     </span>
-                    <span className="text-ivory text-sm text-left truncate">
+                    <span className="text-ivory text-sm text-left truncate flex items-center gap-2">
+                      {m.is_home && m.opponent_crest_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.opponent_crest_url} alt="" className="h-5 w-5 object-contain" />
+                      )}
                       {m.is_home ? m.opponent_name : "Барселона"}
                     </span>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-xs text-muted">{m.competitions?.name}</span>
-                    <span className={`text-xs ${status.color}`}>{status.text}</span>
+                    <span className={`text-xs ${statusColor(m.status)}`}>
+                      {matchStatusLabel(m.status)}
+                      {m.status === "voting_open" && m.voting_closes_at && (
+                        <>
+                          {" · "}
+                          <VotingCountdown closesAt={m.voting_closes_at} />
+                        </>
+                      )}
+                    </span>
                   </div>
                 </Link>
               </div>

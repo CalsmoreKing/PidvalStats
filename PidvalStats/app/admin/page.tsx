@@ -1,8 +1,10 @@
 import { getAdminInfo } from "@/lib/admin";
-import { getAllMatches, getCompetitions, getRoster } from "@/lib/queries";
+import { getAllMatches, getCompetitions, getRoster, getLastMatch, getVoters, getLineupForMatch } from "@/lib/queries";
 import CreateMatchForm from "./CreateMatchForm";
 import MatchAdminRow from "./MatchAdminRow";
 import AdminsManager from "./AdminsManager";
+import RosterManager from "./RosterManager";
+import VotersManager from "./VotersManager";
 
 export const dynamic = "force-dynamic";
 
@@ -14,18 +16,22 @@ export default async function AdminPage() {
       <div className="px-4 md:px-12 py-12 max-w-lg mx-auto text-center">
         <h1 className="font-display text-2xl text-ivory mb-3">Адмін-панель</h1>
         <p className="text-sm text-muted">
-          Увійди через Telegram (кнопка зліва/зверху) — якщо твій акаунт має
+          Увійди через Telegram (кнопка зверху) — якщо твій акаунт має
           права адміна, панель зʼявиться тут автоматично.
         </p>
       </div>
     );
   }
 
-  const [matches, competitions, roster] = await Promise.all([
+  const [matches, competitions, roster, lastMatch, voters] = await Promise.all([
     getAllMatches(),
     getCompetitions(),
     getRoster("first_team"),
+    getLastMatch(),
+    getVoters(),
   ]);
+
+  const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-3xl mx-auto">
@@ -34,7 +40,7 @@ export default async function AdminPage() {
 
       <section className="mb-12">
         <h2 className="font-display text-xl text-ivory mb-4">Створити матч</h2>
-        <CreateMatchForm competitions={competitions} />
+        <CreateMatchForm competitions={competitions} lastMatch={lastMatch} />
       </section>
 
       <section className="mb-12">
@@ -43,10 +49,20 @@ export default async function AdminPage() {
           {matches.length === 0 && (
             <p className="text-sm text-muted">Матчів ще немає.</p>
           )}
-          {matches.map((m: any) => (
-            <MatchAdminRow key={m.id} match={m} roster={roster} />
+          {matches.map((m: any, i: number) => (
+            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} />
           ))}
         </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="font-display text-xl text-ivory mb-4">Ростер — фото та короткі імена</h2>
+        <RosterManager roster={roster} />
+      </section>
+
+      <section className="mb-12">
+        <h2 className="font-display text-xl text-ivory mb-4">Фанати</h2>
+        <VotersManager voters={voters} />
       </section>
 
       {admin.role === "owner" && (

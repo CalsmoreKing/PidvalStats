@@ -3,19 +3,24 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+type LastMatch = { competition_id: string; is_home: boolean; coach_name: string | null } | null;
+
 export default function CreateMatchForm({
   competitions,
+  lastMatch,
 }: {
   competitions: { id: string; name: string }[];
+  lastMatch: LastMatch;
 }) {
   const router = useRouter();
   const [opponent, setOpponent] = useState("");
-  const [competitionId, setCompetitionId] = useState(competitions[0]?.id ?? "");
-  const [isHome, setIsHome] = useState(true);
+  const [crestUrl, setCrestUrl] = useState("");
+  const [competitionId, setCompetitionId] = useState(lastMatch?.competition_id ?? competitions[0]?.id ?? "");
+  const [isHome, setIsHome] = useState(lastMatch?.is_home ?? true);
   const [matchDate, setMatchDate] = useState("");
   const [venue, setVenue] = useState("");
   const [referee, setReferee] = useState("");
-  const [coachName, setCoachName] = useState("");
+  const [coachName, setCoachName] = useState(lastMatch?.coach_name ?? "");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -29,6 +34,7 @@ export default function CreateMatchForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         opponentName: opponent,
+        opponentCrestUrl: crestUrl || null,
         competitionId,
         isHome,
         matchDate,
@@ -44,6 +50,7 @@ export default function CreateMatchForm({
       return;
     }
     setOpponent("");
+    setCrestUrl("");
     setVenue("");
     setReferee("");
     setMatchDate("");
@@ -59,6 +66,12 @@ export default function CreateMatchForm({
           onChange={(e) => setOpponent(e.target.value)}
           placeholder="Суперник (напр. Реал Мадрид)"
           required
+          className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+        />
+        <input
+          value={crestUrl}
+          onChange={(e) => setCrestUrl(e.target.value)}
+          placeholder="URL герба суперника (необов'язково)"
           className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
         />
         <select
@@ -102,6 +115,9 @@ export default function CreateMatchForm({
           className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
         />
       </div>
+      <p className="text-[11px] text-muted -mt-1">
+        Турнір, "домашній матч" і тренер підтягнуті з попереднього матчу — онови, якщо треба.
+      </p>
 
       {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}
 

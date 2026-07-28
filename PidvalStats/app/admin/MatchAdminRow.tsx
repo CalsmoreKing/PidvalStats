@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { matchStatusLabel } from "@/lib/display";
 
 type RosterPlayer = {
   id: string;
@@ -11,9 +12,10 @@ type RosterPlayer = {
   position: string;
 };
 
+type Squad = "none" | "start" | "sub";
+
 type Selection = {
-  included: boolean;
-  isStarting: boolean;
+  squad: Squad;
   isCaptain: boolean;
   isInjured: boolean;
   minutes: number;
@@ -21,11 +23,12 @@ type Selection = {
   assists: number;
   yellowCards: number;
   redCards: number;
+  subInMinute: string;
+  subOutMinute: string;
 };
 
 const emptySel: Selection = {
-  included: false,
-  isStarting: false,
+  squad: "none",
   isCaptain: false,
   isInjured: false,
   minutes: 90,
@@ -33,20 +36,49 @@ const emptySel: Selection = {
   assists: 0,
   yellowCards: 0,
   redCards: 0,
+  subInMinute: "",
+  subOutMinute: "",
 };
+
+function buildInitialSelections(existingLineup: any[]): Record<string, Selection> {
+  const map: Record<string, Selection> = {};
+  for (const row of existingLineup ?? []) {
+    const pid = row.players?.id ?? row.player_id;
+    if (!pid) continue;
+    map[pid] = {
+      squad: row.is_starting ? "start" : "sub",
+      isCaptain: !!row.is_captain,
+      isInjured: !!row.is_injured,
+      minutes: row.minutes_played ?? (row.is_starting ? 90 : 0),
+      goals: row.goals ?? 0,
+      assists: row.assists ?? 0,
+      yellowCards: row.yellow_cards ?? 0,
+      redCards: row.red_cards ?? 0,
+      subInMinute: row.sub_in_minute != null ? String(row.sub_in_minute) : "",
+      subOutMinute: row.sub_out_minute != null ? String(row.sub_out_minute) : "",
+    };
+  }
+  return map;
+}
 
 export default function MatchAdminRow({
   match,
   roster,
+  existingLineup,
 }: {
   match: any;
   roster: RosterPlayer[];
+  existingLineup: any[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [selections, setSelections] = useState<Record<string, Selection>>({});
+  const [selections, setSelections] = useState<Record<string, Selection>>(() =>
+    buildInitialSelections(existingLineup)
+  );
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [savingLineup, setSavingLineup] = useState(false);
   const [openingVoting, setOpeningVoting] = useState(false);
+  const [closingVoting, setClosingVoting] = useState(false);
   const [msg, setMsg] = useState("");
 
   function setSel(playerId: string, patch: Partial<Selection>) {
@@ -56,14 +88,23 @@ export default function MatchAdminRow({
     }));
   }
 
+  function cycleSquad(playerId: string) {
+    const cur = selections[playerId]?.squad ?? "none";
+    const next: Squad = cur === "none" ? "start" : cur === "start" ? "sub" : "none";
+    setSel(playerId, {
+      squad: next,
+      minutes: next === "start" ? 90 : next === "sub" ? 0 : 0,
+    });
+  }
+
   async function saveLineup() {
     setSavingLineup(true);
     setMsg("");
     const rows = Object.entries(selections)
-      .filter(([, s]) => s.included)
+      .filter(([, s]) => s.squad !== "none")
       .map(([playerId, s]) => ({
         playerId,
-        isStarting: s.isStarting,
+        isStarting: s.squad === "start",
         isCaptain: s.isCaptain,
         isInjured: s.isInjured,
         minutesPlayed: s.minutes,
@@ -71,6 +112,8 @@ export default function MatchAdminRow({
         assists: s.assists,
         yellowCards: s.yellowCards,
         redCards: s.redCards,
+        subInMinute: s.subInMinute ? Number(s.subInMinute) : null,
+        subOutMinute: s.subOutMinute ? Number(s.subOutMinute) : null,
       }));
 
     const res = await fetch("/api/admin/lineup", {
@@ -102,13 +145,35 @@ export default function MatchAdminRow({
     router.refresh();
   }
 
+  async function closeVoting() {
+    if (!confirm("Закрити голосування й підрахувати результати зараз?")) return;
+    setClosingVoting(true);
+    setMsg("");
+    const res = await fetch(`/api/admin/matches/${match.id}/close-voting`, { method: "POST" });
+    const data = await res.json();
+    setClosingVoting(false);
+    if (!res.ok) {
+      setMsg(data.error ?? "Помилка закриття голосування");
+      return;
+    }
+    setMsg("Голосування закрито, результати підраховано");
+    router.refresh();
+  }
+
+  const squadLabel: Record<Squad, string> = { none: "—", start: "СТАРТ", sub: "ЗАМІНА" };
+  const squadColor: Record<Squad, string> = {
+    none: "bg-panel-raised text-muted",
+    start: "bg-gold text-void",
+    sub: "bg-gold/30 text-gold-bright",
+  };
+
   return (
     <div className="rounded-xl border border-white/5 bg-panel">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-3 flex-wrap gap-2">
         <Link href={`/matches/${match.id}`} className="text-sm text-ivory hover:text-gold-bright">
           {match.is_home ? "Барселона" : match.opponent_name} —{" "}
           {match.is_home ? match.opponent_name : "Барселона"}
-          <span className="text-muted ml-2 text-xs">{match.status}</span>
+          <span className="text-muted ml-2 text-xs">{matchStatusLabel(match.status)}</span>
         </Link>
         <div className="flex items-center gap-2">
           {(match.status === "scheduled" || match.status === "live" || match.status === "finished") && (
@@ -118,6 +183,15 @@ export default function MatchAdminRow({
               className="text-xs rounded-lg bg-gold text-void px-3 py-1.5 font-medium disabled:opacity-40"
             >
               {openingVoting ? "…" : "Відкрити голосування"}
+            </button>
+          )}
+          {match.status === "voting_open" && (
+            <button
+              onClick={closeVoting}
+              disabled={closingVoting}
+              className="text-xs rounded-lg bg-red-500/80 text-white px-3 py-1.5 font-medium disabled:opacity-40"
+            >
+              {closingVoting ? "…" : "Закрити голосування"}
             </button>
           )}
           <button
@@ -131,46 +205,46 @@ export default function MatchAdminRow({
 
       {open && (
         <div className="border-t border-white/5 px-4 py-4">
-          <div className="max-h-[28rem] overflow-y-auto flex flex-col gap-2 mb-3">
+          <p className="text-[11px] text-muted mb-3">
+            Тисни на гравця: перший тап — старт, другий — заміна, третій — прибрати зі складу.
+          </p>
+          <div className="max-h-[28rem] overflow-y-auto flex flex-col gap-1 mb-3">
             {roster.map((p) => {
               const sel = selections[p.id] ?? emptySel;
+              const inSquad = sel.squad !== "none";
               return (
-                <div key={p.id} className="flex flex-wrap items-center gap-2 text-xs border-b border-white/5 pb-2">
-                  <span className="w-32 truncate text-ivory">{p.full_name}</span>
-                  <span className="w-6 text-muted">{p.jersey_number ?? "—"}</span>
-                  <label className="flex items-center gap-1 text-muted">
-                    <input
-                      type="checkbox"
-                      checked={sel.included}
-                      onChange={(e) => setSel(p.id, { included: e.target.checked })}
-                    />
-                    у складі
-                  </label>
-                  {sel.included && (
-                    <>
-                      <select
-                        value={sel.isStarting ? "start" : "sub"}
-                        onChange={(e) =>
-                          setSel(p.id, {
-                            isStarting: e.target.value === "start",
-                            minutes: e.target.value === "start" ? 90 : sel.minutes,
-                          })
-                        }
-                        className="bg-panel-raised rounded px-1.5 py-1 text-ivory"
+                <div key={p.id} className="border-b border-white/5 pb-1.5">
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      onClick={() => cycleSquad(p.id)}
+                      className={`w-16 shrink-0 rounded px-1.5 py-1 font-utility text-[10px] ${squadColor[sel.squad]}`}
+                    >
+                      {squadLabel[sel.squad]}
+                    </button>
+                    <span className="w-6 text-muted">{p.jersey_number ?? "—"}</span>
+                    <span className="flex-1 truncate text-ivory">{p.full_name}</span>
+                    {inSquad && (
+                      <button
+                        onClick={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
+                        className="text-muted hover:text-ivory px-1"
+                        title="Деталі: хвилини, голи, картки"
                       >
-                        <option value="start">Старт</option>
-                        <option value="sub">Заміна</option>
-                      </select>
+                        {expandedId === p.id ? "▲" : "деталі ▾"}
+                      </button>
+                    )}
+                  </div>
 
-                      <label className="flex items-center gap-1 text-muted" title="Капітан">
+                  {inSquad && expandedId === p.id && (
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 pl-[4.5rem] text-[11px]">
+                      <label className="flex items-center gap-1 text-muted">
                         <input
                           type="checkbox"
                           checked={sel.isCaptain}
                           onChange={(e) => setSel(p.id, { isCaptain: e.target.checked })}
                         />
-                        C
+                        капітан
                       </label>
-                      <label className="flex items-center gap-1 text-muted" title="Травма">
+                      <label className="flex items-center gap-1 text-muted">
                         <input
                           type="checkbox"
                           checked={sel.isInjured}
@@ -178,13 +252,36 @@ export default function MatchAdminRow({
                         />
                         травма
                       </label>
-
                       <NumField label="хв" value={sel.minutes} onChange={(v) => setSel(p.id, { minutes: v })} max={120} />
                       <NumField label="голи" value={sel.goals} onChange={(v) => setSel(p.id, { goals: v })} />
                       <NumField label="асисти" value={sel.assists} onChange={(v) => setSel(p.id, { assists: v })} />
                       <NumField label="ЖК" value={sel.yellowCards} onChange={(v) => setSel(p.id, { yellowCards: v })} max={2} />
                       <NumField label="ЧК" value={sel.redCards} onChange={(v) => setSel(p.id, { redCards: v })} max={1} />
-                    </>
+                      {sel.squad === "start" && (
+                        <label className="flex items-center gap-1 text-muted">
+                          вийшов на
+                          <input
+                            type="number"
+                            placeholder="хв"
+                            value={sel.subOutMinute}
+                            onChange={(e) => setSel(p.id, { subOutMinute: e.target.value })}
+                            className="w-11 bg-panel-raised rounded px-1 py-1 text-ivory"
+                          />
+                        </label>
+                      )}
+                      {sel.squad === "sub" && (
+                        <label className="flex items-center gap-1 text-muted">
+                          вийшов з лави на
+                          <input
+                            type="number"
+                            placeholder="хв"
+                            value={sel.subInMinute}
+                            onChange={(e) => setSel(p.id, { subInMinute: e.target.value })}
+                            className="w-11 bg-panel-raised rounded px-1 py-1 text-ivory"
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                 </div>
               );

@@ -1,10 +1,18 @@
 export type LineupPlayer = {
   id: string;
   name: string;
+  shortName?: string | null;
   jersey: number | null;
   position: string;
   rating?: number | null;
   isCaptain?: boolean;
+  photoUrl?: string | null;
+  goals?: number;
+  assists?: number;
+  yellowCards?: number;
+  redCards?: number;
+  subOutMinute?: number | null;
+  subInMinute?: number | null;
 };
 
 const LINE_Y: Record<string, number> = {

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { opponentName, competitionId, isHome, matchDate, venue, referee, coachName } =
+  const { opponentName, opponentCrestUrl, competitionId, isHome, matchDate, venue, referee, coachName } =
     await req.json();
 
   if (!opponentName || !competitionId || !matchDate) {
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       team_id: team.id,
       competition_id: competitionId,
       opponent_name: opponentName,
+      opponent_crest_url: opponentCrestUrl || null,
       is_home: isHome,
       match_date: kickoff.toISOString(),
       venue: venue || null,

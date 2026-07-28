@@ -14,6 +14,8 @@ type LineupInput = {
   assists?: number;
   yellowCards?: number;
   redCards?: number;
+  subInMinute?: number | null;
+  subOutMinute?: number | null;
 };
 
 export async function POST(req: NextRequest) {
@@ -40,6 +42,8 @@ export async function POST(req: NextRequest) {
     assists: r.assists ?? 0,
     yellow_cards: r.yellowCards ?? 0,
     red_cards: r.redCards ?? 0,
+    sub_in_minute: r.subInMinute ?? null,
+    sub_out_minute: r.subOutMinute ?? null,
   }));
 
   // upsert по унікальному (match_id, player_id) — повторне збереження оновлює, не дублює
@@ -49,6 +53,16 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+
+  // Прибираємо гравців, яких адмін прибрав зі складу (більше не в поданому списку)
+  const keepIds = rows.map((r) => r.player_id);
+  const del = supabase.from("match_lineups").delete().eq("match_id", matchId);
+  const { error: delError } =
+    keepIds.length > 0 ? await del.not("player_id", "in", `(${keepIds.join(",")})`) : await del;
+
+  if (delError) {
+    return NextResponse.json({ ok: true, warning: "Склад збережено, але прибирання старих рядків не вдалось" });
   }
 
   return NextResponse.json({ ok: true });

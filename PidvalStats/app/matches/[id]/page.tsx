@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
+import VotingCountdown from "@/components/VotingCountdown";
 import { getMatchById, getLineupForMatch } from "@/lib/queries";
 import { layoutFormation } from "@/lib/formation";
+import { matchStatusLabel } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
 
@@ -17,21 +19,36 @@ export default async function MatchDetailPage({ params }: { params: { id: string
     .map((r) => ({
       id: r.players.id,
       name: r.players.full_name,
+      shortName: r.players.short_name,
       jersey: r.players.jersey_number,
       position: r.players.position,
       rating: r.avg_rating,
       isCaptain: r.is_captain,
+      photoUrl: r.players.photo_url,
+      goals: r.goals,
+      assists: r.assists,
+      yellowCards: r.yellow_cards,
+      redCards: r.red_cards,
+      subOutMinute: r.sub_out_minute,
     }));
   const subs = lineupRows
     .filter((r) => !r.is_starting)
     .map((r) => ({
       id: r.players.id,
       name: r.players.full_name,
+      shortName: r.players.short_name,
       jersey: r.players.jersey_number,
       rating: r.avg_rating,
+      photoUrl: r.players.photo_url,
+      goals: r.goals,
+      assists: r.assists,
+      yellowCards: r.yellow_cards,
+      redCards: r.red_cards,
+      subInMinute: r.sub_in_minute,
     }));
 
   const pitchSlots = layoutFormation(starters);
+  const captain = lineupRows.find((r) => r.is_captain);
 
   const votablePlayers: VotablePlayer[] = lineupRows.map((r) => ({
     playerId: r.players.id,
@@ -52,8 +69,18 @@ export default async function MatchDetailPage({ params }: { params: { id: string
         {[
           { label: "Стадіон", value: match.venue ?? "—" },
           { label: "Рефері", value: match.referee ?? "—" },
-          { label: "Капітан", value: "—" },
-          { label: "Статус", value: match.status },
+          { label: "Капітан", value: captain?.players?.full_name ?? "—" },
+          {
+            label: "Статус",
+            value:
+              match.status === "voting_open" && match.voting_closes_at ? (
+                <span>
+                  {matchStatusLabel(match.status)} · <VotingCountdown closesAt={match.voting_closes_at} />
+                </span>
+              ) : (
+                matchStatusLabel(match.status)
+              ),
+          },
         ].map((row) => (
           <div key={row.label} className="rounded-lg border border-white/5 bg-panel px-3 py-2">
             <div className="eyebrow mb-1">{row.label}</div>

@@ -1,48 +1,107 @@
+import { shortName } from "@/lib/display";
+
 type Slot = {
   id: string;
   name: string;
+  shortName?: string | null;
   jersey: number | null;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
   rating?: number | null;
   isCaptain?: boolean;
+  photoUrl?: string | null;
+  goals?: number;
+  assists?: number;
+  yellowCards?: number;
+  redCards?: number;
+  subOutMinute?: number | null;
+  subInMinute?: number | null;
 };
 
-function PlayerToken({ slot }: { slot: Slot }) {
+function EventIcons({ slot }: { slot: Slot }) {
+  const hasAny =
+    (slot.goals ?? 0) > 0 ||
+    (slot.assists ?? 0) > 0 ||
+    (slot.yellowCards ?? 0) > 0 ||
+    (slot.redCards ?? 0) > 0 ||
+    slot.subOutMinute != null ||
+    slot.subInMinute != null;
+  if (!hasAny) return null;
+
   return (
-    <div
-      className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-    >
-      <div className="relative w-12 h-12 md:w-16 md:h-16">
-        <div className="absolute inset-0 rounded-full bg-panel-raised border-2 border-gold/60" />
-        <div
-          className="absolute left-0 w-12 md:w-16 flex items-center justify-center bg-panel-raised rounded-t-full rounded-b-lg overflow-hidden"
-          style={{ top: "-10px", height: "58px" }}
-        >
-          <span className="font-display text-sm md:text-lg text-ivory/30">
-            {slot.name.split(" ").pop()?.[0]}
-          </span>
+    <div className="flex items-center justify-center gap-0.5 mt-0.5 flex-wrap max-w-[90px]">
+      {Array.from({ length: Math.min(slot.goals ?? 0, 4) }).map((_, i) => (
+        <span key={`g${i}`} className="text-[9px] leading-none">⚽</span>
+      ))}
+      {Array.from({ length: Math.min(slot.assists ?? 0, 4) }).map((_, i) => (
+        <span key={`a${i}`} className="text-[9px] leading-none">👟</span>
+      ))}
+      {(slot.yellowCards ?? 0) > 0 && <span className="h-2.5 w-2 bg-yellow-400 rounded-[1px] inline-block" />}
+      {(slot.redCards ?? 0) > 0 && <span className="h-2.5 w-2 bg-red-500 rounded-[1px] inline-block" />}
+      {slot.subOutMinute != null && (
+        <span className="text-[9px] text-red-300 leading-none">↓{slot.subOutMinute}&apos;</span>
+      )}
+      {slot.subInMinute != null && (
+        <span className="text-[9px] text-gold-bright leading-none">↑{slot.subInMinute}&apos;</span>
+      )}
+    </div>
+  );
+}
+
+// Сам "жетон" — коло (завжди чисте) + фото, що виглядає з-над нього, якщо є.
+function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
+  const label = shortName(slot.name, slot.shortName);
+  const size = compact ? "w-14 h-14" : "w-16 h-16 md:w-20 md:h-20";
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className={`relative ${size}`}>
+        <div className="absolute inset-0 rounded-full bg-panel-raised border-2 border-gold/60 flex items-center justify-center overflow-hidden">
+          {!slot.photoUrl && (
+            <span className="font-display text-lg md:text-xl text-ivory/25">{label[0]}</span>
+          )}
         </div>
-        {slot.jersey != null && (
-          <div className="absolute -bottom-1 -right-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-void border border-gold/60 flex items-center justify-center font-utility text-[8px] md:text-[10px] text-gold-bright">
-            {slot.jersey}
-          </div>
+
+        {slot.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={slot.photoUrl}
+            alt={label}
+            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[85%] rounded-t-full object-cover"
+            style={{ height: "140%", objectPosition: "top" }}
+          />
         )}
+
         {slot.isCaptain && (
-          <div className="absolute -top-1 -left-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-gold-bright text-void flex items-center justify-center font-utility text-[8px] md:text-[10px] font-bold">
+          <div className="absolute -top-1 -left-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-gold-bright text-void flex items-center justify-center font-utility text-[8px] md:text-[10px] font-bold z-10">
             C
           </div>
         )}
+
+        {slot.rating != null && (
+          <div className="rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-7 md:w-7 flex items-center justify-center font-utility text-[9px] md:text-[10px] font-bold z-10">
+            {slot.rating.toFixed(1)}
+          </div>
+        )}
       </div>
-      <div className="mt-1 text-[10px] md:text-xs text-ivory text-center leading-tight max-w-[64px] md:max-w-[88px] truncate">
-        {slot.name}
+
+      <div className="mt-1 text-[10px] md:text-xs text-ivory text-center leading-tight whitespace-nowrap">
+        {slot.jersey != null && <span className="text-gold-bright/80 font-utility mr-1">{slot.jersey}</span>}
+        {label}
       </div>
-      {slot.rating != null && (
-        <div className="rating-star h-5 w-5 md:h-6 md:w-6 flex items-center justify-center font-utility text-[8px] md:text-[9px] font-bold -mt-1">
-          {slot.rating.toFixed(1)}
-        </div>
-      )}
+      <EventIcons slot={slot} />
+    </div>
+  );
+}
+
+// На полі — абсолютне позиціювання у %.
+function PitchToken({ slot }: { slot: Slot }) {
+  return (
+    <div
+      className="absolute -translate-x-1/2 -translate-y-1/2"
+      style={{ left: `${slot.x ?? 50}%`, top: `${slot.y ?? 50}%` }}
+    >
+      <TokenVisual slot={slot} />
     </div>
   );
 }
@@ -54,8 +113,10 @@ export default function FormationPitch({
 }: {
   coach: string | null;
   lineup: Slot[];
-  subs: { id: string; name: string; jersey: number | null; inMinute?: number | null; rating?: number | null }[];
+  subs: Slot[];
 }) {
+  const subsCompact = subs.length > 6;
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
@@ -63,33 +124,18 @@ export default function FormationPitch({
         <div className="font-display text-sm text-ivory">{coach ?? "—"}</div>
       </div>
 
-      <div className="relative w-full aspect-[3/4] md:aspect-[16/9] rounded-xl border border-white/10 bg-panel/60 mb-6">
+      <div className="relative w-full aspect-[3/4] md:aspect-[16/9] rounded-xl border border-white/10 bg-panel/60 mb-8">
         {lineup.map((slot) => (
-          <PlayerToken key={slot.id} slot={slot} />
+          <PitchToken key={slot.id} slot={slot} />
         ))}
       </div>
 
       {subs.length > 0 && (
         <>
-          <div className="eyebrow mb-3">Заміни</div>
-          <div className="flex flex-wrap gap-4">
+          <div className="eyebrow mb-4">Заміни</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-6">
             {subs.map((s) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-panel-raised border border-gold/40 flex items-center justify-center font-utility text-[10px] text-gold-bright">
-                  {s.jersey}
-                </div>
-                <div>
-                  <div className="text-xs text-ivory">{s.name}</div>
-                  {s.inMinute != null && (
-                    <div className="text-[10px] text-muted">{s.inMinute}&apos;</div>
-                  )}
-                </div>
-                {s.rating != null && (
-                  <div className="rating-star h-6 w-6 flex items-center justify-center font-utility text-[9px] font-bold">
-                    {s.rating.toFixed(1)}
-                  </div>
-                )}
-              </div>
+              <TokenVisual key={s.id} slot={s} compact={subsCompact} />
             ))}
           </div>
         </>

@@ -56,7 +56,7 @@ export async function getAllMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, opponent_name, is_home, match_date, status, home_score, away_score, coach_rating, competitions(name)"
+      "id, opponent_name, opponent_crest_url, is_home, match_date, status, home_score, away_score, coach_rating, voting_closes_at, competitions(name)"
     )
     .order("match_date", { ascending: false });
   if (error) {
@@ -85,7 +85,7 @@ export async function getLineupForMatch(matchId: string) {
   const { data, error } = await supabase
     .from("match_lineups")
     .select(
-      "id, is_starting, is_captain, minutes_played, goals, assists, avg_rating, players(id, full_name, jersey_number, photo_url, position)"
+      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, players(id, full_name, short_name, jersey_number, photo_url, position)"
     )
     .eq("match_id", matchId);
   if (error) {
@@ -99,7 +99,7 @@ export async function getRoster(teamSlug: "first_team" | "atletic" = "first_team
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("players")
-    .select("id, full_name, jersey_number, position, nationality, birth_date, photo_url, teams!inner(slug)")
+    .select("id, full_name, short_name, jersey_number, position, nationality, birth_date, photo_url, teams!inner(slug)")
     .eq("teams.slug", teamSlug)
     .order("jersey_number", { ascending: true, nullsFirst: false });
   if (error) {
@@ -146,6 +146,30 @@ export async function getPlayerProfile(playerId: string) {
     mvpAwards: mvpRow?.mvp_awards ?? 0,
     history: history ?? [],
   };
+}
+
+export async function getLastMatch() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase
+    .from("matches")
+    .select("competition_id, is_home, coach_name")
+    .order("match_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function getVoters() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("voters")
+    .select("id, display_name, telegram_username, telegram_id, created_at")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("getVoters", error);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getCompetitions() {
