@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 type Row = {
   id: string;
@@ -89,7 +90,11 @@ export default function SeasonTable({ rows }: { rows: Row[] }) {
             {sorted.map((p, i) => (
               <tr key={p.id} className="bg-panel/80 hover:bg-transparent transition-colors">
                 <td className="px-5 py-4 font-display text-gold/50">{i + 1}</td>
-                <td className="px-5 py-4 text-ivory">{p.full_name}</td>
+                <td className="px-5 py-4 text-ivory">
+                  <Link href={`/players/${p.id}`} className="hover:text-gold-bright">
+                    {p.full_name}
+                  </Link>
+                </td>
                 <td className="px-5 py-4 text-right font-utility text-muted">{p.matches}</td>
                 <td className="px-5 py-4 text-right font-utility text-muted">{p.goals}</td>
                 <td className="px-5 py-4 text-right font-utility text-muted">{p.assists}</td>

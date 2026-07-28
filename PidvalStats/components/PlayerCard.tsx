@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { calcAge } from "@/lib/age";
 import { flagUrl } from "@/lib/flags";
 
@@ -19,7 +20,7 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
   const age = calcAge(player.birth_date);
 
   return (
-    <div className="relative aspect-[2/1] rounded-2xl overflow-visible">
+    <Link href={`/players/${player.id}`} className="relative aspect-[2/1] rounded-2xl overflow-visible block">
       <div className="absolute inset-0 rounded-2xl overflow-hidden bg-panel border border-white/5">
         {/* Прапор — на весь банер, під легким нахилом, векторний (без пікселізації) */}
         <div
@@ -75,6 +76,6 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
           {player.season_rating.toFixed(1)}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

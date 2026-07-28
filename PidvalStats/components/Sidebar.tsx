@@ -46,11 +46,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div>
-        <Link href="/admin" className="block text-xs text-muted hover:text-gold-bright">
-          Адмінка →
-        </Link>
-      </div>
+      <div />
     </aside>
   );
 }

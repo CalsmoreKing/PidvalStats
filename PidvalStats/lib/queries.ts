@@ -109,6 +109,45 @@ export async function getRoster(teamSlug: "first_team" | "atletic" = "first_team
   return data ?? [];
 }
 
+export async function getPlayerProfile(playerId: string) {
+  const supabase = createServerSupabase();
+
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("id, full_name, position, nationality, birth_date, jersey_number, photo_url, team_id")
+    .eq("id", playerId)
+    .maybeSingle();
+  if (playerError || !player) return null;
+
+  const { data: seasonRow } = await supabase
+    .from("season_stats")
+    .select("matches_rated, total_goals, total_assists, total_votes, weighted_season_rating")
+    .eq("player_id", playerId)
+    .maybeSingle();
+
+  const { data: mvpRow } = await supabase
+    .from("season_mvp_counts")
+    .select("mvp_awards")
+    .eq("player_id", playerId)
+    .maybeSingle();
+
+  const { data: history } = await supabase
+    .from("match_lineups")
+    .select(
+      "avg_rating, minutes_played, goals, assists, is_starting, matches!inner(id, opponent_name, is_home, match_date, status, competitions(name))"
+    )
+    .eq("player_id", playerId)
+    .eq("matches.status", "finalized")
+    .order("match_date", { referencedTable: "matches", ascending: true });
+
+  return {
+    player,
+    season: seasonRow ?? null,
+    mvpAwards: mvpRow?.mvp_awards ?? 0,
+    history: history ?? [],
+  };
+}
+
 export async function getCompetitions() {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
