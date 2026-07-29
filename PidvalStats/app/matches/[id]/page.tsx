@@ -3,7 +3,7 @@ import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
 import VotingCountdown from "@/components/VotingCountdown";
 import { getMatchById, getLineupForMatch } from "@/lib/queries";
-import { layoutFormation } from "@/lib/formation";
+import { resolvePitchPositions } from "@/lib/formation";
 import { matchStatusLabel } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
@@ -25,11 +25,15 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       rating: r.avg_rating,
       isCaptain: r.is_captain,
       photoUrl: r.players.photo_url,
+      photoFocusX: r.players.photo_focus_x,
+      photoFocusY: r.players.photo_focus_y,
+      nationality: r.players.nationality,
       goals: r.goals,
       assists: r.assists,
       yellowCards: r.yellow_cards,
       redCards: r.red_cards,
       subOutMinute: r.sub_out_minute,
+      formationSlot: r.formation_slot,
     }));
   const subs = lineupRows
     .filter((r) => !r.is_starting)
@@ -40,6 +44,9 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       jersey: r.players.jersey_number,
       rating: r.avg_rating,
       photoUrl: r.players.photo_url,
+      photoFocusX: r.players.photo_focus_x,
+      photoFocusY: r.players.photo_focus_y,
+      nationality: r.players.nationality,
       goals: r.goals,
       assists: r.assists,
       yellowCards: r.yellow_cards,
@@ -47,7 +54,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       subInMinute: r.sub_in_minute,
     }));
 
-  const pitchSlots = layoutFormation(starters);
+  const pitchSlots = resolvePitchPositions(starters);
   const captain = lineupRows.find((r) => r.is_captain);
 
   const votablePlayers: VotablePlayer[] = lineupRows.map((r) => ({

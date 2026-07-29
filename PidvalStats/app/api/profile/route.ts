@@ -1,0 +1,28 @@
+export const dynamic = "force-dynamic";
+
+import { NextRequest, NextResponse } from "next/server";
+import { getVoterIdFromCookie } from "@/lib/supabase/authed";
+import { createServiceClient } from "@/lib/supabase/service";
+
+export async function PATCH(req: NextRequest) {
+  const voterId = getVoterIdFromCookie();
+  if (!voterId) {
+    return NextResponse.json({ error: "Увійдіть через Telegram" }, { status: 401 });
+  }
+
+  const { displayName, avatarUrl } = await req.json();
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("voters")
+    .update({
+      custom_display_name: displayName || null,
+      custom_avatar_url: avatarUrl || null,
+    })
+    .eq("id", voterId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}

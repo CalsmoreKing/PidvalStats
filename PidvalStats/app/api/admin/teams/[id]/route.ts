@@ -10,19 +10,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { photoUrl, shortName, positions, photoFocusX, photoFocusY } = await req.json();
+  const { crestUrl } = await req.json();
   const supabase = createServiceClient();
 
-  const { error } = await supabase
-    .from("players")
-    .update({
-      photo_url: photoUrl,
-      short_name: shortName,
-      positions,
-      photo_focus_x: photoFocusX,
-      photo_focus_y: photoFocusY,
-    })
-    .eq("id", params.id);
+  const { error } = await supabase.from("teams").update({ crest_url: crestUrl }).eq("id", params.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

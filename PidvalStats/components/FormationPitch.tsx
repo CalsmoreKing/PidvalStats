@@ -1,4 +1,5 @@
 import { shortName } from "@/lib/display";
+import { flagUrl } from "@/lib/flags";
 
 type Slot = {
   id: string;
@@ -10,6 +11,9 @@ type Slot = {
   rating?: number | null;
   isCaptain?: boolean;
   photoUrl?: string | null;
+  photoFocusX?: number | null;
+  photoFocusY?: number | null;
+  nationality?: string | null;
   goals?: number;
   assists?: number;
   yellowCards?: number;
@@ -48,28 +52,40 @@ function EventIcons({ slot }: { slot: Slot }) {
   );
 }
 
-// Сам "жетон" — коло (завжди чисте) + фото, що виглядає з-над нього, якщо є.
-function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
+// Жетон гравця — коло з прапором на фоні; фото (якщо є) лягає рівно
+// в те саме коло звичайним "cover" — надійно, без крихких трюків.
+export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
   const label = shortName(slot.name, slot.shortName);
   const size = compact ? "w-14 h-14" : "w-16 h-16 md:w-20 md:h-20";
+  const focusX = slot.photoFocusX ?? 50;
+  const focusY = slot.photoFocusY ?? 50;
 
   return (
     <div className="flex flex-col items-center">
-      <div className={`relative ${size}`}>
-        <div className="absolute inset-0 rounded-full bg-panel-raised border-2 border-gold/60 flex items-center justify-center overflow-hidden">
-          {!slot.photoUrl && (
-            <span className="font-display text-lg md:text-xl text-ivory/25">{label[0]}</span>
-          )}
-        </div>
-
-        {slot.photoUrl && (
+      <div className={`relative ${size} rounded-full overflow-hidden border-2 border-gold/60 bg-panel-raised`}>
+        {slot.nationality && (
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{
+              backgroundImage: `url(${flagUrl(slot.nationality, "svg")})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+            aria-hidden
+          />
+        )}
+        {slot.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={slot.photoUrl}
             alt={label}
-            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[85%] rounded-t-full object-cover"
-            style={{ height: "140%", objectPosition: "top" }}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: `${focusX}% ${focusY}%` }}
           />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-display text-lg md:text-xl text-ivory/70 drop-shadow">{label[0]}</span>
+          </div>
         )}
 
         {slot.isCaptain && (
@@ -77,7 +93,6 @@ function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
             C
           </div>
         )}
-
         {slot.rating != null && (
           <div className="rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-7 md:w-7 flex items-center justify-center font-utility text-[9px] md:text-[10px] font-bold z-10">
             {slot.rating.toFixed(1)}
@@ -94,7 +109,6 @@ function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
   );
 }
 
-// На полі — абсолютне позиціювання у %.
 function PitchToken({ slot }: { slot: Slot }) {
   return (
     <div

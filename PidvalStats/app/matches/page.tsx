@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllMatches } from "@/lib/queries";
+import { getAllMatches, getFirstTeam } from "@/lib/queries";
 import { matchStatusLabel } from "@/lib/display";
 import VotingCountdown from "@/components/VotingCountdown";
 
@@ -24,7 +24,7 @@ function dayLabelUk(iso: string) {
 }
 
 export default async function MatchesPage() {
-  const matches = await getAllMatches();
+  const [matches, team] = await Promise.all([getAllMatches(), getFirstTeam()]);
   let lastMonth = "";
 
   return (
@@ -72,18 +72,26 @@ export default async function MatchesPage() {
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                     <span className="text-ivory text-sm text-right truncate flex items-center justify-end gap-2">
                       {m.is_home ? "Барселона" : m.opponent_name}
-                      {!m.is_home && m.opponent_crest_url && (
+                      {(m.is_home ? team?.crest_url : m.opponent_crest_url) && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={m.opponent_crest_url} alt="" className="h-5 w-5 object-contain" />
+                        <img
+                          src={m.is_home ? team!.crest_url! : m.opponent_crest_url}
+                          alt=""
+                          className="h-5 w-5 object-contain"
+                        />
                       )}
                     </span>
                     <span className="font-utility text-lg text-gold-bright tracking-wider px-2 whitespace-nowrap">
                       {score}
                     </span>
                     <span className="text-ivory text-sm text-left truncate flex items-center gap-2">
-                      {m.is_home && m.opponent_crest_url && (
+                      {(!m.is_home ? team?.crest_url : m.opponent_crest_url) && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={m.opponent_crest_url} alt="" className="h-5 w-5 object-contain" />
+                        <img
+                          src={!m.is_home ? team!.crest_url! : m.opponent_crest_url}
+                          alt=""
+                          className="h-5 w-5 object-contain"
+                        />
                       )}
                       {m.is_home ? m.opponent_name : "Барселона"}
                     </span>

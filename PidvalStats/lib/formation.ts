@@ -7,13 +7,34 @@ export type LineupPlayer = {
   rating?: number | null;
   isCaptain?: boolean;
   photoUrl?: string | null;
+  photoFocusX?: number | null;
+  photoFocusY?: number | null;
+  nationality?: string | null;
   goals?: number;
   assists?: number;
   yellowCards?: number;
   redCards?: number;
   subOutMinute?: number | null;
   subInMinute?: number | null;
+  formationSlot?: number | null;
 };
+
+import { FORMATION_SLOTS } from "@/lib/formationSlots";
+
+// Якщо адмін розставив усіх через візуальний конструктор (formation_slot
+// заповнено для кожного) — беремо фіксовані координати, накладання
+// фізично неможливе. Якщо дані старі і слотів нема — рахуємо евристично.
+export function resolvePitchPositions(starters: LineupPlayer[]) {
+  const allHaveSlots = starters.length > 0 && starters.every((p) => p.formationSlot != null);
+  if (allHaveSlots) {
+    return starters.map((p) => {
+      const def = FORMATION_SLOTS[p.formationSlot as number];
+      return { ...p, x: def?.x ?? 50, y: def?.y ?? 50 };
+    });
+  }
+  return layoutFormation(starters);
+}
+
 
 const LINE_Y: Record<string, number> = {
   ВРТ: 92,

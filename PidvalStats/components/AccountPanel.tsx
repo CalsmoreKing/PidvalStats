@@ -94,6 +94,9 @@ export default function AccountPanel() {
                     Адмінка
                   </Link>
                 )}
+                <Link href="/settings" className="text-[11px] text-muted hover:text-gold-bright">
+                  Профіль
+                </Link>
                 <button onClick={logout} className="text-[11px] text-muted hover:text-gold-bright text-left">
                   Вийти
                 </button>
@@ -128,6 +131,9 @@ export default function AccountPanel() {
                 адмін
               </Link>
             )}
+            <Link href="/settings" className="text-[10px] text-muted hover:text-gold-bright shrink-0">
+              профіль
+            </Link>
             <button onClick={logout} className="text-[10px] text-muted hover:text-gold-bright shrink-0">
               вийти
             </button>

@@ -85,7 +85,7 @@ export async function getLineupForMatch(matchId: string) {
   const { data, error } = await supabase
     .from("match_lineups")
     .select(
-      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, players(id, full_name, short_name, jersey_number, photo_url, position)"
+      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, formation_slot, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, position, nationality)"
     )
     .eq("match_id", matchId);
   if (error) {
@@ -99,7 +99,9 @@ export async function getRoster(teamSlug: "first_team" | "atletic" = "first_team
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("players")
-    .select("id, full_name, short_name, jersey_number, position, nationality, birth_date, photo_url, teams!inner(slug)")
+    .select(
+      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, teams!inner(slug)"
+    )
     .eq("teams.slug", teamSlug)
     .order("jersey_number", { ascending: true, nullsFirst: false });
   if (error) {
@@ -170,6 +172,12 @@ export async function getVoters() {
     return [];
   }
   return data ?? [];
+}
+
+export async function getFirstTeam() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase.from("teams").select("id, name, crest_url").eq("slug", "first_team").maybeSingle();
+  return data ?? null;
 }
 
 export async function getCompetitions() {
