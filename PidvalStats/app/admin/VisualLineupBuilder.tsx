@@ -10,6 +10,7 @@ type RosterPlayer = {
   short_name?: string | null;
   jersey_number: number | null;
   position: string;
+  positions?: string[] | null;
   nationality?: string | null;
   photo_url?: string | null;
 };
@@ -22,7 +23,8 @@ export type PlayerDetail = {
   yellowCards: number;
   redCards: number;
   subOutMinute: string; // порожньо = не виходив (відіграв увесь матч)
-  subInMinute: string; // для замін: на якій хвилині вийшов на поле
+  subInMinute: string; // на якій хвилині вийшов на поле (заміна)
+  subForPlayerId: string; // кого замінив (для замін) — id гравця зі старту
 };
 
 export const emptyDetail: PlayerDetail = {
@@ -34,7 +36,14 @@ export const emptyDetail: PlayerDetail = {
   redCards: 0,
   subOutMinute: "",
   subInMinute: "",
+  subForPlayerId: "",
 };
+
+function clampMinute(v: string): string {
+  if (v === "") return "";
+  const n = Math.max(0, Math.min(90, Number(v) || 0));
+  return String(n);
+}
 
 export default function VisualLineupBuilder({
   matchId,
@@ -56,18 +65,25 @@ export default function VisualLineupBuilder({
   setDetail: (playerId: string, patch: Partial<PlayerDetail>) => void;
 }) {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [showAllForSlot, setShowAllForSlot] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
 
   const usedIds = new Set([...Object.values(slotAssignments).filter(Boolean), ...subIds]);
+  const startersInSquad = Object.values(slotAssignments).filter(Boolean) as string[];
 
   function assignSlot(slotIndex: number, playerId: string | null) {
     setSlotAssignments({ ...slotAssignments, [slotIndex]: playerId });
     setActiveSlot(null);
+    setShowAllForSlot(false);
   }
 
   function toggleSub(playerId: string) {
-    setSubIds(subIds.includes(playerId) ? subIds.filter((id) => id !== playerId) : [...subIds, playerId]);
+    if (subIds.includes(playerId)) {
+      setSubIds(subIds.filter((id) => id !== playerId));
+    } else {
+      setSubIds([...subIds, playerId]);
+    }
   }
 
   async function duplicatePrevious() {
@@ -77,13 +93,28 @@ export default function VisualLineupBuilder({
     setDuplicating(false);
     if (!res.ok || !data.slots?.length) return;
     const next: Record<number, string | null> = {};
-    for (const row of data.slots) {
-      next[row.formation_slot] = row.player_id;
-    }
+    for (const row of data.slots) next[row.formation_slot] = row.player_id;
     setSlotAssignments(next);
   }
 
   const playerById = (id: string) => roster.find((p) => p.id === id);
+
+  function playersForSlot(def: (typeof FORMATION_SLOTS)[number]) {
+    const filtered = roster.filter(
+      (p) => p.position === def.label || p.positions?.includes(def.label)
+    );
+    const pool = showAllForSlot || filtered.length === 0 ? roster : filtered;
+    return pool.filter((p) => !usedIds.has(p.id) || p.id === slotAssignments[def.index]);
+  }
+
+  // Автоматично рахуємо пару "хто вийшов / хто зайшов" при зміні хвилини заміни
+  function setSubPairing(subPlayerId: string, forPlayerId: string, minute: string) {
+    const m = clampMinute(minute);
+    setDetail(subPlayerId, { subForPlayerId: forPlayerId, subInMinute: m });
+    if (forPlayerId) {
+      setDetail(forPlayerId, { subOutMinute: m });
+    }
+  }
 
   return (
     <div>
@@ -92,16 +123,17 @@ export default function VisualLineupBuilder({
         <button
           onClick={duplicatePrevious}
           disabled={duplicating}
-          className="text-[11px] rounded-lg border border-gold/30 text-gold-bright px-3 py-1.5 disabled:opacity-40 shrink-0"
+          className="text-[11px] rounded-lg border border-gold/30 text-gold-bright px-3 py-1.5 disabled:opacity-40 shrink-0 transition-colors duration-200"
         >
           {duplicating ? "…" : "Продублювати минулу 11"}
         </button>
       </div>
 
-      <div className="relative w-full aspect-[3/4] md:aspect-[16/9] rounded-xl border border-white/10 bg-panel/60 mb-4">
+      <div className="relative w-full aspect-[3/5] md:aspect-[16/12] rounded-xl border border-white/10 bg-void/70 mb-4">
         {FORMATION_SLOTS.map((def) => {
           const playerId = slotAssignments[def.index];
           const player = playerId ? playerById(playerId) : null;
+          const isActive = activeSlot === def.index;
 
           return (
             <div
@@ -109,25 +141,13 @@ export default function VisualLineupBuilder({
               className="absolute -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${def.x}%`, top: `${def.y}%` }}
             >
-              {activeSlot === def.index ? (
-                <select
-                  autoFocus
-                  value={playerId ?? ""}
-                  onChange={(e) => assignSlot(def.index, e.target.value || null)}
-                  onBlur={() => setActiveSlot(null)}
-                  className="bg-panel-raised border border-gold/40 rounded text-[11px] text-ivory px-1 py-1 w-28"
-                >
-                  <option value="">— порожньо —</option>
-                  {roster
-                    .filter((p) => !usedIds.has(p.id) || p.id === playerId)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.jersey_number ?? "—"} {p.full_name}
-                      </option>
-                    ))}
-                </select>
-              ) : player ? (
-                <button onClick={() => setActiveSlot(def.index)}>
+              <button
+                onClick={() => {
+                  setActiveSlot(isActive ? null : def.index);
+                  setShowAllForSlot(false);
+                }}
+              >
+                {player ? (
                   <TokenVisual
                     slot={{
                       id: player.id,
@@ -138,22 +158,57 @@ export default function VisualLineupBuilder({
                       nationality: player.nationality,
                     }}
                   />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setActiveSlot(def.index)}
-                  className="h-16 w-16 md:w-20 md:h-20 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center text-white/30 text-2xl hover:border-gold/50 hover:text-gold/50"
-                >
-                  +
-                </button>
-              )}
+                ) : (
+                  <div className="h-16 w-16 md:w-20 md:h-20 rounded-full border-2 border-dashed border-white/25 flex items-center justify-center text-white/40 text-2xl transition-colors duration-200 hover:border-gold/50 hover:text-gold/50">
+                    +
+                  </div>
+                )}
+              </button>
+
+              {/* Спливаюча панель вибору — з'являється одразу зі списком, без проміжного кроку */}
+              <div
+                className={`absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-40 rounded-lg bg-panel border border-gold/30 shadow-xl transition-all duration-150 origin-top ${
+                  isActive ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+                }`}
+              >
+                <div className="max-h-48 overflow-y-auto py-1">
+                  {player && (
+                    <button
+                      onClick={() => assignSlot(def.index, null)}
+                      className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-white/5"
+                    >
+                      ✕ прибрати
+                    </button>
+                  )}
+                  {playersForSlot(def).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => assignSlot(def.index, p.id)}
+                      className="w-full text-left px-3 py-1.5 text-[11px] text-ivory hover:bg-white/5 truncate"
+                    >
+                      {p.jersey_number ?? "—"} {p.full_name}
+                    </button>
+                  ))}
+                  {playersForSlot(def).length === 0 && (
+                    <div className="px-3 py-1.5 text-[11px] text-muted">Нікого вільного на цю позицію</div>
+                  )}
+                </div>
+                <label className="flex items-center gap-1.5 px-3 py-1.5 border-t border-white/5 text-[10px] text-muted">
+                  <input
+                    type="checkbox"
+                    checked={showAllForSlot}
+                    onChange={(e) => setShowAllForSlot(e.target.checked)}
+                  />
+                  показати всіх гравців
+                </label>
+              </div>
             </div>
           );
         })}
       </div>
 
       <div className="eyebrow mb-2">Заміни</div>
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-6 mb-4">
         {roster
           .filter((p) => !Object.values(slotAssignments).includes(p.id))
           .map((p) => {
@@ -162,21 +217,72 @@ export default function VisualLineupBuilder({
               <button
                 key={p.id}
                 onClick={() => toggleSub(p.id)}
-                className={`text-[11px] rounded-full px-3 py-1.5 border ${
-                  active ? "bg-gold/30 border-gold/50 text-gold-bright" : "border-white/10 text-muted"
-                }`}
+                className="transition-transform duration-150"
+                style={{ transform: active ? "scale(1)" : "scale(0.95)" }}
               >
-                {p.jersey_number ?? "—"} {p.full_name}
+                <div className={active ? "" : "opacity-40"}>
+                  <TokenVisual
+                    slot={{
+                      id: p.id,
+                      name: p.full_name,
+                      shortName: p.short_name,
+                      jersey: p.jersey_number,
+                      photoUrl: p.photo_url,
+                      nationality: p.nationality,
+                    }}
+                    compact
+                  />
+                </div>
               </button>
             );
           })}
       </div>
 
-      {/* Деталі (капітан/травма/голи/картки/хвилини) — по гравцю зі складу */}
-      <div className="eyebrow mb-2">Деталі гравців у складі</div>
+      {subIds.length > 0 && (
+        <div className="flex flex-col gap-2 mb-4">
+          {subIds.map((subId) => {
+            const sub = playerById(subId);
+            const d = details[subId] ?? emptyDetail;
+            if (!sub) return null;
+            return (
+              <div key={subId} className="flex flex-wrap items-center gap-2 text-[11px] bg-panel rounded-lg px-3 py-2">
+                <span className="text-gold-bright">{sub.full_name}</span>
+                <span className="text-muted">замість</span>
+                <select
+                  value={d.subForPlayerId}
+                  onChange={(e) => setSubPairing(subId, e.target.value, d.subInMinute)}
+                  className="bg-panel-raised rounded px-1.5 py-1 text-ivory"
+                >
+                  <option value="">— обери —</option>
+                  {startersInSquad.map((sid) => {
+                    const starter = playerById(sid);
+                    return starter ? (
+                      <option key={sid} value={sid}>
+                        {starter.full_name}
+                      </option>
+                    ) : null;
+                  })}
+                </select>
+                <span className="text-muted">на</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={90}
+                  placeholder="хв"
+                  value={d.subInMinute}
+                  onChange={(e) => setSubPairing(subId, d.subForPlayerId, e.target.value)}
+                  className="w-12 bg-panel-raised rounded px-1.5 py-1 text-ivory"
+                />
+                хвилині
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex flex-col gap-1 max-h-72 overflow-y-auto rounded-lg border border-white/5">
-        {[...Object.values(slotAssignments).filter(Boolean), ...subIds].map((id) => {
-          const p = playerById(id as string);
+        {[...startersInSquad, ...subIds].map((id) => {
+          const p = playerById(id);
           if (!p) return null;
           const isSub = subIds.includes(p.id);
           const d = details[p.id] ?? emptyDetail;
@@ -188,61 +294,46 @@ export default function VisualLineupBuilder({
                 </span>
                 <button
                   onClick={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
-                  className="text-muted hover:text-ivory"
+                  className="text-muted hover:text-ivory transition-colors duration-150"
                 >
                   {expandedId === p.id ? "▲" : "деталі ▾"}
                 </button>
               </div>
-              {expandedId === p.id && (
-                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[11px]">
-                  <label className="flex items-center gap-1 text-muted">
-                    <input
-                      type="checkbox"
-                      checked={d.isCaptain}
-                      onChange={(e) => setDetail(p.id, { isCaptain: e.target.checked })}
-                    />
-                    капітан
-                  </label>
-                  <label className="flex items-center gap-1 text-muted">
-                    <input
-                      type="checkbox"
-                      checked={d.isInjured}
-                      onChange={(e) => setDetail(p.id, { isInjured: e.target.checked })}
-                    />
-                    травма
-                  </label>
-                  <MiniNum label="голи" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
-                  <MiniNum label="асисти" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
-                  <MiniNum label="ЖК" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
-                  <MiniNum label="ЧК" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
-                  {!isSub && (
+              <div
+                className={`grid transition-all duration-200 ${
+                  expandedId === p.id ? "grid-rows-[1fr] opacity-100 mt-1.5" : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] pb-1">
                     <label className="flex items-center gap-1 text-muted">
-                      вийшов на
                       <input
-                        type="number"
-                        placeholder="90"
-                        value={d.subOutMinute}
-                        onChange={(e) => setDetail(p.id, { subOutMinute: e.target.value })}
-                        className="w-11 bg-panel-raised rounded px-1 py-1 text-ivory"
+                        type="checkbox"
+                        checked={d.isCaptain}
+                        onChange={(e) => setDetail(p.id, { isCaptain: e.target.checked })}
                       />
-                      хв (пусто = увесь матч)
+                      капітан
                     </label>
-                  )}
-                  {isSub && (
                     <label className="flex items-center gap-1 text-muted">
-                      вийшов на поле на
                       <input
-                        type="number"
-                        placeholder="—"
-                        value={d.subInMinute}
-                        onChange={(e) => setDetail(p.id, { subInMinute: e.target.value })}
-                        className="w-11 bg-panel-raised rounded px-1 py-1 text-ivory"
+                        type="checkbox"
+                        checked={d.isInjured}
+                        onChange={(e) => setDetail(p.id, { isInjured: e.target.checked })}
                       />
-                      хв
+                      травма
                     </label>
-                  )}
+                    <MiniNum label="голи" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
+                    <MiniNum label="асисти" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
+                    <MiniNum label="ЖК" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
+                    <MiniNum label="ЧК" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
+                    {!isSub && (
+                      <span className="text-muted">
+                        {d.subOutMinute ? `вийшов на ${d.subOutMinute} хв` : "відіграв увесь матч"}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

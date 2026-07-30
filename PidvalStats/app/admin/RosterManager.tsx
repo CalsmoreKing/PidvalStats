@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PhotoCropEditor from "./PhotoCropEditor";
 
 type Player = {
   id: string;
@@ -19,12 +20,17 @@ type Edit = {
   positions: string;
   focusX: number;
   focusY: number;
+  fullName: string;
+  jerseyNumber: string;
 };
 
 export default function RosterManager({ roster }: { roster: Player[] }) {
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNumberId, setEditingNumberId] = useState<string | null>(null);
 
   function getVal(p: Player): Edit {
     return (
@@ -34,12 +40,18 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
         positions: (p.positions ?? []).join(", "),
         focusX: p.photo_focus_x ?? 50,
         focusY: p.photo_focus_y ?? 50,
+        fullName: p.full_name,
+        jerseyNumber: p.jersey_number != null ? String(p.jersey_number) : "",
       }
     );
   }
 
-  async function save(p: Player) {
-    const val = getVal(p);
+  function patch(id: string, val: Edit, next: Partial<Edit>) {
+    setEdits((cur) => ({ ...cur, [id]: { ...val, ...next } }));
+  }
+
+  async function save(p: Player, overrides?: Partial<Edit>) {
+    const val = { ...getVal(p), ...overrides };
     setSavingId(p.id);
     setSavedId(null);
     await fetch(`/api/admin/players/${p.id}`, {
@@ -48,80 +60,129 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
       body: JSON.stringify({
         photoUrl: val.photoUrl || null,
         shortName: val.shortName || null,
-        positions: val.positions
-          ? val.positions.split(",").map((s) => s.trim()).filter(Boolean)
-          : null,
+        positions: val.positions ? val.positions.split(",").map((s) => s.trim()).filter(Boolean) : null,
         photoFocusX: val.focusX,
         photoFocusY: val.focusY,
+        fullName: val.fullName,
+        jerseyNumber: val.jerseyNumber === "" ? null : Number(val.jerseyNumber),
       }),
     });
     setSavingId(null);
     setSavedId(p.id);
   }
 
+  async function uploadFile(p: Player, file: File) {
+    setUploadingId(p.id);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    setUploadingId(null);
+    if (res.ok) {
+      const val = getVal(p);
+      patch(p.id, val, { photoUrl: data.url });
+      await save(p, { photoUrl: data.url });
+    }
+  }
+
   return (
-    <div className="rounded-xl border border-white/5 bg-panel max-h-[32rem] overflow-y-auto">
+    <div className="rounded-xl border border-white/5 bg-panel max-h-[36rem] overflow-y-auto">
       <div className="flex flex-col divide-y divide-white/5">
         {roster.map((p) => {
           const val = getVal(p);
           return (
-            <div key={p.id} className="px-4 py-2 text-xs">
+            <div key={p.id} className="px-4 py-2.5 text-xs">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="w-6 text-muted">{p.jersey_number ?? "—"}</span>
-                <span className="w-36 truncate text-ivory">{p.full_name}</span>
-                {val.photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={val.photoUrl}
-                    alt=""
-                    className="h-8 w-8 rounded-full object-cover shrink-0"
-                    style={{ objectPosition: `${val.focusX}% ${val.focusY}%` }}
+                {editingNumberId === p.id ? (
+                  <input
+                    autoFocus
+                    type="number"
+                    value={val.jerseyNumber}
+                    onChange={(e) => patch(p.id, val, { jerseyNumber: e.target.value })}
+                    onBlur={() => {
+                      setEditingNumberId(null);
+                      save(p);
+                    }}
+                    className="w-10 bg-panel-raised rounded px-1 py-1 text-ivory"
                   />
+                ) : (
+                  <button
+                    onClick={() => setEditingNumberId(p.id)}
+                    className="w-6 text-muted hover:text-gold-bright transition-colors duration-150"
+                    title="Змінити номер"
+                  >
+                    {p.jersey_number ?? "—"}
+                  </button>
                 )}
-                <input
-                  placeholder="URL фото (PNG)"
-                  value={val.photoUrl}
-                  onChange={(e) => setEdits((cur) => ({ ...cur, [p.id]: { ...val, photoUrl: e.target.value } }))}
-                  className="flex-1 min-w-[140px] bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
-                />
+
+                {editingNameId === p.id ? (
+                  <input
+                    autoFocus
+                    value={val.fullName}
+                    onChange={(e) => patch(p.id, val, { fullName: e.target.value })}
+                    onBlur={() => {
+                      setEditingNameId(null);
+                      save(p);
+                    }}
+                    className="w-40 bg-panel-raised rounded px-1.5 py-1 text-ivory"
+                  />
+                ) : (
+                  <button
+                    onClick={() => setEditingNameId(p.id)}
+                    className="w-40 truncate text-left text-ivory hover:text-gold-bright transition-colors duration-150"
+                    title="Змінити ім'я"
+                  >
+                    {p.full_name}
+                  </button>
+                )}
+
                 <input
                   placeholder="прізвище (авто)"
                   value={val.shortName}
-                  onChange={(e) => setEdits((cur) => ({ ...cur, [p.id]: { ...val, shortName: e.target.value } }))}
-                  className="w-32 bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
+                  onChange={(e) => patch(p.id, val, { shortName: e.target.value })}
+                  className="w-28 bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
                 />
                 <input
                   placeholder="позиції: ЦЗ, ЦОП"
                   value={val.positions}
-                  onChange={(e) => setEdits((cur) => ({ ...cur, [p.id]: { ...val, positions: e.target.value } }))}
-                  className="w-36 bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
+                  onChange={(e) => patch(p.id, val, { positions: e.target.value })}
+                  className="w-32 bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
                 />
                 <button
                   onClick={() => save(p)}
                   disabled={savingId === p.id}
-                  className="rounded bg-panel-raised border border-gold/30 text-gold-bright px-2 py-1.5 disabled:opacity-40"
+                  className="rounded bg-panel-raised border border-gold/30 text-gold-bright px-2 py-1.5 disabled:opacity-40 transition-colors duration-150"
                 >
                   {savingId === p.id ? "…" : savedId === p.id ? "✓" : "Зберегти"}
                 </button>
               </div>
-              {val.photoUrl && (
-                <div className="flex items-center gap-2 mt-1.5 pl-8 text-[10px] text-muted">
-                  кадрування:
-                  <span>X</span>
+
+              <div className="flex flex-wrap items-center gap-3 mt-2 pl-8">
+                <label className="text-[10px] text-muted rounded bg-panel-raised px-2 py-1.5 cursor-pointer hover:text-ivory transition-colors duration-150">
+                  {uploadingId === p.id ? "Завантажуємо…" : "Завантажити фото"}
                   <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={val.focusX}
-                    onChange={(e) => setEdits((cur) => ({ ...cur, [p.id]: { ...val, focusX: Number(e.target.value) } }))}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && uploadFile(p, e.target.files[0])}
                   />
-                  <span>Y</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={val.focusY}
-                    onChange={(e) => setEdits((cur) => ({ ...cur, [p.id]: { ...val, focusY: Number(e.target.value) } }))}
+                </label>
+                <input
+                  placeholder="або встав URL фото"
+                  value={val.photoUrl}
+                  onChange={(e) => patch(p.id, val, { photoUrl: e.target.value })}
+                  onBlur={() => save(p)}
+                  className="flex-1 min-w-[140px] bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none text-[10px]"
+                />
+              </div>
+
+              {val.photoUrl && (
+                <div className="mt-2 pl-8">
+                  <PhotoCropEditor
+                    photoUrl={val.photoUrl}
+                    focusX={val.focusX}
+                    focusY={val.focusY}
+                    onChange={(x, y) => patch(p.id, val, { focusX: x, focusY: y })}
                   />
                 </div>
               )}

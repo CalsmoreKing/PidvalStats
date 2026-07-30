@@ -55,7 +55,7 @@ export default async function AdminPage() {
         <div className="flex flex-col gap-3">
           {matches.length === 0 && <p className="text-sm text-muted">Матчів ще немає.</p>}
           {matches.map((m: any, i: number) => (
-            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} />
+            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} competitions={competitions} />
           ))}
         </div>
       </section>
@@ -64,7 +64,7 @@ export default async function AdminPage() {
 
   const tabs = [
     { key: "matches", label: "Матчі", content: matchesContent },
-    { key: "roster", label: "Ростер", content: <RosterManager roster={roster} /> },
+    { key: "roster", label: "Гравці", content: <RosterManager roster={roster} /> },
     { key: "voters", label: "Фанати", content: <VotersManager voters={voters} /> },
     { key: "club", label: "Клуб", content: team && <ClubSettings team={team} /> },
   ];

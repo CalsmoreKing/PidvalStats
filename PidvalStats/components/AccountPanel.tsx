@@ -13,12 +13,12 @@ type Voter = {
 };
 
 export default function AccountPanel() {
-  const [voter, setVoter] = useState<Voter | null | undefined>(undefined); // undefined = ще завантажується
+  const [voter, setVoter] = useState<Voter | null | undefined>(undefined);
   const [message, setMessage] = useState<"ok" | "expired" | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const loginOutcome = searchParams.get("login"); // 'ok' | 'expired' | null
+  const loginOutcome = searchParams.get("login");
 
   function refresh() {
     fetch("/api/auth/me")
@@ -45,14 +45,10 @@ export default function AccountPanel() {
     window.location.reload();
   }
 
-  const avatarClasses = (isAdmin: boolean) =>
-    `h-full w-full rounded-full object-cover ${isAdmin ? "ring-2 ring-red-500" : ""}`;
-
   return (
     <>
-      {/* Повідомлення про результат входу — однакове на всіх розмірах екрана */}
       {(message === "expired" || message === "ok") && (
-        <div className="fixed z-40 top-3 right-16 md:top-auto md:right-auto md:bottom-4 md:left-4 max-w-[220px]">
+        <div className="fixed z-40 top-14 right-3 md:top-auto md:right-auto md:bottom-16 md:left-4 max-w-[220px] transition-all duration-300">
           {message === "expired" && (
             <div className="rounded-lg bg-panel/95 border border-red-400/30 text-red-300 text-[11px] px-3 py-2 flex items-start gap-2">
               <span>Посилання вже недійсне — перевір профіль або спробуй ще раз.</span>
@@ -68,75 +64,39 @@ export default function AccountPanel() {
         </div>
       )}
 
-      {/* МОБІЛЬНА версія — маленька кругла аватарка справа зверху, деталі по тапу */}
-      <div className="md:hidden fixed z-30 top-3 right-3">
+      {/* Один і той самий компактний формат на всіх розмірах екрана —
+          кругла аватарка, деталі по кліку. Розмір і положення різні. */}
+      <div className="fixed z-30 top-3 right-3 md:top-auto md:right-auto md:bottom-4 md:left-4">
         {voter === undefined ? null : voter ? (
           <div className="relative">
             <button
-              onClick={() => setMobileOpen((v) => !v)}
-              className="h-9 w-9 rounded-full bg-panel-raised border border-white/10 overflow-hidden flex items-center justify-center"
+              onClick={() => setOpen((v) => !v)}
+              className={`h-9 w-9 md:h-10 md:w-10 rounded-full bg-panel-raised border overflow-hidden flex items-center justify-center transition-colors duration-200 ${
+                voter.isAdmin ? "border-red-500" : "border-white/10"
+              }`}
             >
               {voter.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={voter.avatarUrl} alt="" className={avatarClasses(voter.isAdmin)} />
+                <img src={voter.avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className={`text-xs text-ivory/60 ${voter.isAdmin ? "ring-2 ring-red-500 rounded-full h-full w-full flex items-center justify-center" : ""}`}>
-                  {(voter.displayName ?? "?")[0]}
-                </span>
+                <span className="text-xs text-ivory/60">{(voter.displayName ?? "?")[0]}</span>
               )}
             </button>
-            {mobileOpen && (
-              <div className="absolute top-11 right-0 rounded-lg bg-panel/95 backdrop-blur-sm border border-white/10 px-3 py-2 flex flex-col gap-1.5 min-w-[160px]">
-                <div className="text-xs text-ivory">{voter.displayName}</div>
-                {voter.username && <div className="text-[10px] text-muted -mt-1">@{voter.username}</div>}
-                {voter.isAdmin && (
-                  <Link href="/admin" className="text-[11px] text-red-400 hover:text-red-300">
-                    Адмінка
-                  </Link>
-                )}
-                <Link href="/settings" className="text-[11px] text-muted hover:text-gold-bright">
-                  Профіль
-                </Link>
-                <button onClick={logout} className="text-[11px] text-muted hover:text-gold-bright text-left">
-                  Вийти
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <BotLoginButton onLoggedIn={refresh} />
-        )}
-      </div>
 
-      {/* ДЕСКТОП версія — компактна панель знизу зліва, ширина обмежена */}
-      <div className="hidden md:flex fixed z-30 bottom-4 left-4 max-w-[210px]">
-        {voter === undefined ? null : voter ? (
-          <div className="flex items-center gap-2 rounded-full bg-panel/90 backdrop-blur-sm border border-white/10 pl-1.5 pr-2 py-1.5 max-w-full">
-            <div className="h-7 w-7 shrink-0 rounded-full overflow-hidden bg-panel-raised flex items-center justify-center">
-              {voter.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={voter.avatarUrl} alt="" className={avatarClasses(voter.isAdmin)} />
-              ) : (
-                <span className={`text-[10px] text-ivory/50 ${voter.isAdmin ? "ring-2 ring-red-500 rounded-full h-full w-full flex items-center justify-center" : ""}`}>
-                  {(voter.displayName ?? "?")[0]}
-                </span>
-              )}
-            </div>
-            <div className="leading-tight min-w-0">
-              <div className="text-xs text-ivory truncate">{voter.displayName}</div>
-              {voter.username && <div className="text-[10px] text-muted truncate">@{voter.username}</div>}
-            </div>
-            {voter.isAdmin && (
-              <Link href="/admin" className="text-[10px] text-red-400 hover:text-red-300 shrink-0">
-                адмін
+            <div
+              className={`absolute right-0 md:right-auto md:left-0 top-11 md:top-auto md:bottom-12 rounded-lg bg-panel/95 backdrop-blur-sm border border-white/10 px-3 py-2 flex flex-col gap-1.5 min-w-[160px] origin-top-right md:origin-bottom-left transition-all duration-200 ${
+                open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+              }`}
+            >
+              <div className="text-xs text-ivory">{voter.displayName}</div>
+              {voter.username && <div className="text-[10px] text-muted -mt-1">@{voter.username}</div>}
+              <Link href="/settings" className="text-[11px] text-muted hover:text-gold-bright">
+                Профіль
               </Link>
-            )}
-            <Link href="/settings" className="text-[10px] text-muted hover:text-gold-bright shrink-0">
-              профіль
-            </Link>
-            <button onClick={logout} className="text-[10px] text-muted hover:text-gold-bright shrink-0">
-              вийти
-            </button>
+              <button onClick={logout} className="text-[11px] text-muted hover:text-gold-bright text-left">
+                Вийти
+              </button>
+            </div>
           </div>
         ) : (
           <BotLoginButton onLoggedIn={refresh} />

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const items = [
   { href: "/", label: "Головна", hint: "Камп Ноу" },
@@ -11,6 +12,14 @@ const items = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(!!d.voter?.isAdmin))
+      .catch(() => {});
+  }, []);
 
   return (
     <aside className="w-[220px] shrink-0 border-r border-white/5 bg-panel/40 backdrop-blur-sm px-6 py-8 hidden md:flex md:flex-col md:justify-between">
@@ -25,7 +34,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative rounded-md px-3 py-3 transition-colors ${
+                className={`group relative rounded-md px-3 py-3 transition-colors duration-200 ${
                   active ? "bg-panel-raised" : "hover:bg-white/5"
                 }`}
               >
@@ -43,6 +52,24 @@ export default function Sidebar() {
               </Link>
             );
           })}
+
+          <div
+            className={`grid transition-all duration-300 ease-out ${
+              isAdmin ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <Link
+                href="/admin"
+                className={`group relative block rounded-md px-3 py-3 transition-colors duration-200 ${
+                  pathname === "/admin" ? "bg-panel-raised" : "hover:bg-white/5"
+                }`}
+              >
+                <div className="font-display text-lg text-red-400 group-hover:text-red-300">Адмінка</div>
+                <div className="text-xs text-muted">Керування</div>
+              </Link>
+            </div>
+          </div>
         </nav>
       </div>
 

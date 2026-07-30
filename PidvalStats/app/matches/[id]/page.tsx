@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
 import VotingCountdown from "@/components/VotingCountdown";
-import { getMatchById, getLineupForMatch } from "@/lib/queries";
+import { getMatchById, getLineupForMatch, getMyVotesForMatch } from "@/lib/queries";
 import { resolvePitchPositions } from "@/lib/formation";
 import { matchStatusLabel } from "@/lib/display";
 
@@ -62,7 +62,11 @@ export default async function MatchDetailPage({ params }: { params: { id: string
     name: r.players.full_name,
     jersey: r.players.jersey_number,
     isSub: !r.is_starting,
+    photoUrl: r.players.photo_url,
+    nationality: r.players.nationality,
   }));
+
+  const myVotes = match.status === "voting_open" ? await getMyVotesForMatch(match.id) : null;
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-2xl md:max-w-3xl mx-auto">
@@ -112,7 +116,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
             Онови всім гравцям оцінку 1–10 і, за бажанням, обери MVP — голос
             зараховується одним пакетом, коли натиснеш «Надіслати».
           </p>
-          <VotingForm matchId={match.id} players={votablePlayers} />
+          <VotingForm matchId={match.id} players={votablePlayers} initialVotes={myVotes} />
         </div>
       )}
     </div>

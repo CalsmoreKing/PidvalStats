@@ -56,7 +56,7 @@ function EventIcons({ slot }: { slot: Slot }) {
 // в те саме коло звичайним "cover" — надійно, без крихких трюків.
 export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
   const label = shortName(slot.name, slot.shortName);
-  const size = compact ? "w-14 h-14" : "w-16 h-16 md:w-20 md:h-20";
+  const size = compact ? "w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]" : "w-16 h-16 md:w-20 md:h-20";
   const focusX = slot.photoFocusX ?? 50;
   const focusY = slot.photoFocusY ?? 50;
 
@@ -138,7 +138,7 @@ export default function FormationPitch({
         <div className="font-display text-sm text-ivory">{coach ?? "—"}</div>
       </div>
 
-      <div className="relative w-full aspect-[3/4] md:aspect-[16/9] rounded-xl border border-white/10 bg-panel/60 mb-8">
+      <div className="relative w-full aspect-[3/5] md:aspect-[16/12] rounded-xl border border-white/10 bg-void/70 mb-8">
         {lineup.map((slot) => (
           <PitchToken key={slot.id} slot={slot} />
         ))}

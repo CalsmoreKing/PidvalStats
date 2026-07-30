@@ -61,15 +61,17 @@ export default async function MatchesPage() {
 
                 <Link
                   href={`/matches/${m.id}`}
-                  className="relative block rounded-xl border border-white/5 bg-panel px-4 py-4"
+                  className={`relative block rounded-xl border border-white/5 bg-panel px-4 py-4 transition-opacity duration-200 ${
+                    m.is_cancelled ? "opacity-50" : ""
+                  }`}
                 >
-                  {m.coach_rating != null && (
+                  {m.coach_rating != null && !m.is_cancelled && (
                     <div className="rating-star absolute -top-2 -right-2 h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
                       {m.coach_rating.toFixed(1)}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <div className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 ${m.is_cancelled ? "line-through" : ""}`}>
                     <span className="text-ivory text-sm text-right truncate flex items-center justify-end gap-2">
                       {m.is_home ? "Барселона" : m.opponent_name}
                       {(m.is_home ? team?.crest_url : m.opponent_crest_url) && (
@@ -99,14 +101,23 @@ export default async function MatchesPage() {
 
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-xs text-muted">{m.competitions?.name}</span>
-                    <span className={`text-xs ${statusColor(m.status)}`}>
-                      {matchStatusLabel(m.status)}
-                      {m.status === "voting_open" && m.voting_closes_at && (
+                    <span className={`text-xs ${m.is_cancelled ? "text-red-400" : statusColor(m.status)}`}>
+                      {m.is_cancelled ? "Скасовано" : matchStatusLabel(m.status)}
+                      {!m.is_cancelled && m.status === "voting_open" && m.voting_closes_at && (
                         <>
                           {" · "}
                           <VotingCountdown closesAt={m.voting_closes_at} />
                         </>
                       )}
+                      {!m.is_cancelled &&
+                        ["scheduled", "live", "finished"].includes(m.status) && (
+                          <>
+                            {" · орієнтовно голосування з "}
+                            {new Date(
+                              new Date(m.match_date).getTime() + 105 * 60_000
+                            ).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}
+                          </>
+                        )}
                     </span>
                   </div>
                 </Link>

@@ -38,6 +38,7 @@ function buildInitialState(existingLineup: any[]) {
       redCards: row.red_cards ?? 0,
       subOutMinute: row.sub_out_minute != null ? String(row.sub_out_minute) : "",
       subInMinute: row.sub_in_minute != null ? String(row.sub_in_minute) : "",
+      subForPlayerId: "",
     };
   }
   return { slotAssignments, subIds, details };
@@ -47,25 +48,37 @@ export default function MatchAdminRow({
   match,
   roster,
   existingLineup,
+  competitions,
 }: {
   match: any;
   roster: RosterPlayer[];
   existingLineup: any[];
+  competitions: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const initial = buildInitialState(existingLineup);
   const [slotAssignments, setSlotAssignments] = useState<Record<number, string | null>>(initial.slotAssignments);
   const [subIds, setSubIds] = useState<string[]>(initial.subIds);
   const [details, setDetails] = useState<Record<string, PlayerDetail>>(initial.details);
   const [homeScore, setHomeScore] = useState(match.home_score ?? "");
   const [awayScore, setAwayScore] = useState(match.away_score ?? "");
+  const [venue, setVenue] = useState(match.venue ?? "");
+  const [referee, setReferee] = useState(match.referee ?? "");
+  const [coachName, setCoachName] = useState(match.coach_name ?? "");
+  const [competitionId, setCompetitionId] = useState(match.competition_id ?? "");
+  const [matchDate, setMatchDate] = useState(
+    match.match_date ? new Date(match.match_date).toISOString().slice(0, 16) : ""
+  );
 
   const [savingLineup, setSavingLineup] = useState(false);
   const [savingScore, setSavingScore] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
   const [openingVoting, setOpeningVoting] = useState(false);
   const [closingVoting, setClosingVoting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [msg, setMsg] = useState("");
 
   function setDetail(playerId: string, patch: Partial<PlayerDetail>) {
@@ -158,6 +171,40 @@ export default function MatchAdminRow({
     router.refresh();
   }
 
+  async function saveDetails() {
+    setSavingDetails(true);
+    setMsg("");
+    const res = await fetch(`/api/admin/matches/${match.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        venue,
+        referee,
+        coachName,
+        competitionId,
+        matchDate: matchDate ? new Date(matchDate).toISOString() : match.match_date,
+      }),
+    });
+    setSavingDetails(false);
+    if (res.ok) {
+      setMsg("Деталі матчу збережено");
+      router.refresh();
+    }
+  }
+
+  async function toggleCancel() {
+    const next = !match.is_cancelled;
+    if (!confirm(next ? "Позначити матч скасованим?" : "Відновити матч?")) return;
+    setCancelling(true);
+    const res = await fetch(`/api/admin/matches/${match.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isCancelled: next }),
+    });
+    setCancelling(false);
+    if (res.ok) router.refresh();
+  }
+
   async function deleteMatch() {
     if (!confirm("Видалити матч повністю (склад і голоси теж)? Це незворотньо.")) return;
     setDeleting(true);
@@ -222,6 +269,19 @@ export default function MatchAdminRow({
             {open ? "Сховати склад" : "Склад"}
           </button>
           <button
+            onClick={() => setEditOpen((v) => !v)}
+            className="text-xs rounded-lg border border-white/10 text-muted px-3 py-1.5 hover:text-ivory"
+          >
+            {editOpen ? "Сховати деталі" : "Деталі"}
+          </button>
+          <button
+            onClick={toggleCancel}
+            disabled={cancelling}
+            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
+          >
+            {cancelling ? "…" : match.is_cancelled ? "відновити" : "скасувати"}
+          </button>
+          <button
             onClick={deleteMatch}
             disabled={deleting}
             className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
@@ -231,8 +291,65 @@ export default function MatchAdminRow({
         </div>
       </div>
 
-      {open && (
-        <div className="border-t border-white/5 px-4 py-4">
+      <div
+        className={`grid transition-all duration-300 ${
+          editOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden border-t border-white/5 px-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <input
+              type="datetime-local"
+              value={matchDate}
+              onChange={(e) => setMatchDate(e.target.value)}
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
+            />
+            <select
+              value={competitionId}
+              onChange={(e) => setCompetitionId(e.target.value)}
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
+            >
+              {competitions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <input
+              value={venue}
+              onChange={(e) => setVenue(e.target.value)}
+              placeholder="Стадіон"
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            />
+            <input
+              value={referee}
+              onChange={(e) => setReferee(e.target.value)}
+              placeholder="Рефері"
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            />
+            <input
+              value={coachName}
+              onChange={(e) => setCoachName(e.target.value)}
+              placeholder="Тренер"
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            />
+          </div>
+          <button
+            onClick={saveDetails}
+            disabled={savingDetails}
+            className="mt-3 rounded-lg bg-panel-raised border border-gold/30 text-gold-bright px-4 py-2 text-xs disabled:opacity-40"
+          >
+            {savingDetails ? "Зберігаємо…" : "Зберегти деталі"}
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={`grid transition-all duration-300 ${
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden border-t border-white/5 px-4 py-4">
           <VisualLineupBuilder
             matchId={match.id}
             roster={roster}
@@ -254,7 +371,7 @@ export default function MatchAdminRow({
             {savingLineup ? "Зберігаємо…" : "Зберегти склад"}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

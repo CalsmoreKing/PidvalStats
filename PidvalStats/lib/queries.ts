@@ -27,6 +27,7 @@ export async function getTopMatches(limit = 3) {
     .from("matches")
     .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions(name)")
     .eq("status", "finalized")
+    .eq("is_cancelled", false)
     .order("coach_rating", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) {
@@ -56,7 +57,7 @@ export async function getAllMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, opponent_name, opponent_crest_url, is_home, match_date, status, home_score, away_score, coach_rating, voting_closes_at, competitions(name)"
+      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, coach_rating, voting_closes_at, venue, referee, coach_name, competition_id, competitions(name)"
     )
     .order("match_date", { ascending: false });
   if (error) {
@@ -172,6 +173,26 @@ export async function getVoters() {
     return [];
   }
   return data ?? [];
+}
+
+export async function getMyVotesForMatch(matchId: string) {
+  const { getVoterIdFromCookie } = await import("@/lib/supabase/authed");
+  const { createServiceClient } = await import("@/lib/supabase/service");
+
+  const voterId = getVoterIdFromCookie();
+  if (!voterId) return null;
+
+  const supabase = createServiceClient();
+  const [{ data: votes }, { data: mvp }] = await Promise.all([
+    supabase.from("votes").select("player_id, rating").eq("match_id", matchId).eq("voter_id", voterId),
+    supabase.from("mvp_votes").select("player_id").eq("match_id", matchId).eq("voter_id", voterId).maybeSingle(),
+  ]);
+
+  if (!votes || votes.length === 0) return null;
+  return {
+    ratings: Object.fromEntries(votes.map((v) => [v.player_id, v.rating])) as Record<string, number>,
+    mvpPlayerId: mvp?.player_id ?? null,
+  };
 }
 
 export async function getFirstTeam() {

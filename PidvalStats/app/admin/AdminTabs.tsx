@@ -11,12 +11,12 @@ export default function AdminTabs({
 
   return (
     <div>
-      <div className="flex gap-2 mb-6 flex-wrap sticky top-0 md:top-4 z-10 bg-void/90 backdrop-blur-sm py-2 -mx-1 px-1">
+      <div className="flex gap-2 mb-6 flex-wrap sticky top-0 md:top-4 z-10 backdrop-blur-sm py-2 -mx-1 px-1">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
-            className={`px-4 py-2 rounded-full text-sm border transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm border transition-all duration-200 ${
               active === t.key
                 ? "bg-panel-raised border-gold/40 text-gold-bright"
                 : "border-white/10 text-muted hover:border-white/25"
@@ -27,7 +27,10 @@ export default function AdminTabs({
         ))}
       </div>
       {tabs.map((t) => (
-        <div key={t.key} className={active === t.key ? "block" : "hidden"}>
+        <div
+          key={t.key}
+          className={`transition-opacity duration-200 ${active === t.key ? "block opacity-100" : "hidden opacity-0"}`}
+        >
           {t.content}
         </div>
       ))}
