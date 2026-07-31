@@ -64,6 +64,10 @@ export default async function MatchDetailPage({ params }: { params: { id: string
     isSub: !r.is_starting,
     photoUrl: r.players.photo_url,
     nationality: r.players.nationality,
+    minutesPlayed: r.minutes_played,
+    goals: r.goals,
+    assists: r.assists,
+    funFact: r.fun_fact,
   }));
 
   const myVotes = match.status === "voting_open" ? await getMyVotesForMatch(match.id) : null;
@@ -79,7 +83,12 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {[
           { label: "Стадіон", value: match.venue ?? "—" },
-          { label: "Рефері", value: match.referee ?? "—" },
+          {
+            label: "Рефері",
+            value: match.referee
+              ? `${match.referee}${match.referee_rating != null ? ` (${match.referee_rating.toFixed(1)})` : ""}`
+              : "—",
+          },
           { label: "Капітан", value: captain?.players?.full_name ?? "—" },
           {
             label: "Статус",

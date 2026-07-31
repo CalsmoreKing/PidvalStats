@@ -20,3 +20,12 @@ export const MATCH_STATUS_LABELS: Record<string, string> = {
 export function matchStatusLabel(status: string): string {
   return MATCH_STATUS_LABELS[status] ?? status;
 }
+
+// Колірна шкала оцінки: низька — червона, висока — зелена
+export function ratingColor(rating: number): { bg: string; text: string } {
+  if (rating >= 8.5) return { bg: "#2FBF71", text: "#0B2818" };
+  if (rating >= 7) return { bg: "#8FCB4A", text: "#17240A" };
+  if (rating >= 6) return { bg: "#D4AF37", text: "#17102A" };
+  if (rating >= 5) return { bg: "#E08A3C", text: "#2A1608" };
+  return { bg: "#DB4B4B", text: "#2A0808" };
+}

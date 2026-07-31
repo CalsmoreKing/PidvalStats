@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getPlayerProfile } from "@/lib/queries";
 import { calcAge } from "@/lib/age";
 import { flagUrl } from "@/lib/flags";
+import { ratingColor } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,10 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
           </div>
         </div>
         {season?.weighted_season_rating != null && (
-          <div className="rating-star absolute -bottom-3 -right-3 h-14 w-14 flex items-center justify-center font-utility text-sm font-bold z-10">
+          <div
+            className="rating-star absolute -bottom-3 -right-3 h-14 w-14 flex items-center justify-center font-utility text-sm font-bold z-10"
+            style={{ background: ratingColor(season.weighted_season_rating).bg, color: ratingColor(season.weighted_season_rating).text }}
+          >
             {season.weighted_season_rating.toFixed(1)}
           </div>
         )}
@@ -145,7 +149,10 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
                       {formatDateUk(h.matches.match_date)} · {h.matches.competitions?.name}
                     </div>
                   </div>
-                  <div className="rating-star h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
+                  <div
+                    className="rating-star h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold"
+                    style={{ background: ratingColor(h.avg_rating).bg, color: ratingColor(h.avg_rating).text }}
+                  >
                     {h.avg_rating.toFixed(1)}
                   </div>
                 </div>

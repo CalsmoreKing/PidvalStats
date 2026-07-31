@@ -1,5 +1,6 @@
 import PlayerCard, { PlayerCardData } from "@/components/PlayerCard";
 import { getTopPlayers, getTopMatches } from "@/lib/queries";
+import { ratingColor } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,10 @@ export default async function CampNouPage() {
                   </div>
                   <div className="text-xs text-muted">{m.competitions?.name}</div>
                 </div>
-                <div className="rating-star h-9 w-9 flex items-center justify-center font-utility text-[11px] font-bold">
+                <div
+                  className="rating-star h-9 w-9 flex items-center justify-center font-utility text-[11px] font-bold"
+                  style={m.coach_rating != null ? { background: ratingColor(m.coach_rating).bg, color: ratingColor(m.coach_rating).text } : undefined}
+                >
                   {m.coach_rating?.toFixed(1)}
                 </div>
               </div>

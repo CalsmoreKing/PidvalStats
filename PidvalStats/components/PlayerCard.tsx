@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { calcAge } from "@/lib/age";
+import { ratingColor } from "@/lib/display";
 import { flagUrl } from "@/lib/flags";
 
 export type PlayerCardData = {
@@ -72,7 +73,10 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
       )}
 
       {player.season_rating != null && (
-        <div className="rating-star absolute -bottom-3 -right-3 h-14 w-14 flex items-center justify-center font-utility text-sm font-bold z-10">
+        <div
+          className="rating-star absolute -bottom-3 -right-3 h-14 w-14 flex items-center justify-center font-utility text-sm font-bold z-10"
+          style={{ background: ratingColor(player.season_rating).bg, color: ratingColor(player.season_rating).text }}
+        >
           {player.season_rating.toFixed(1)}
         </div>
       )}

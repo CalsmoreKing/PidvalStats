@@ -61,8 +61,12 @@ export default async function MatchesPage() {
 
                 <Link
                   href={`/matches/${m.id}`}
-                  className={`relative block rounded-xl border border-white/5 bg-panel px-4 py-4 transition-opacity duration-200 ${
-                    m.is_cancelled ? "opacity-50" : ""
+                  className={`relative block rounded-xl border px-4 py-4 transition-all duration-200 ${
+                    m.is_cancelled
+                      ? "border-white/5 bg-panel opacity-50"
+                      : m.status === "voting_open"
+                      ? "border-gold bg-panel shadow-[0_0_16px_rgba(212,175,55,0.35)]"
+                      : "border-white/5 bg-panel"
                   }`}
                 >
                   {m.coach_rating != null && !m.is_cancelled && (

@@ -39,6 +39,7 @@ function buildInitialState(existingLineup: any[]) {
       subOutMinute: row.sub_out_minute != null ? String(row.sub_out_minute) : "",
       subInMinute: row.sub_in_minute != null ? String(row.sub_in_minute) : "",
       subForPlayerId: "",
+      funFact: row.fun_fact ?? "",
     };
   }
   return { slotAssignments, subIds, details };
@@ -66,7 +67,9 @@ export default function MatchAdminRow({
   const [awayScore, setAwayScore] = useState(match.away_score ?? "");
   const [venue, setVenue] = useState(match.venue ?? "");
   const [referee, setReferee] = useState(match.referee ?? "");
+  const [refereeRating, setRefereeRating] = useState(match.referee_rating ?? "");
   const [coachName, setCoachName] = useState(match.coach_name ?? "");
+  const [coachRatingOverride, setCoachRatingOverride] = useState(match.coach_rating ?? "");
   const [competitionId, setCompetitionId] = useState(match.competition_id ?? "");
   const [matchDate, setMatchDate] = useState(
     match.match_date ? new Date(match.match_date).toISOString().slice(0, 16) : ""
@@ -106,6 +109,7 @@ export default function MatchAdminRow({
         redCards: d.redCards,
         subOutMinute: d.subOutMinute ? Number(d.subOutMinute) : null,
         subInMinute: d.subInMinute ? Number(d.subInMinute) : null,
+        funFact: d.funFact || null,
       };
     });
 
@@ -180,7 +184,9 @@ export default function MatchAdminRow({
       body: JSON.stringify({
         venue,
         referee,
+        refereeRating: refereeRating === "" ? null : Number(refereeRating),
         coachName,
+        coachRating: coachRatingOverride === "" ? null : Number(coachRatingOverride),
         competitionId,
         matchDate: matchDate ? new Date(matchDate).toISOString() : match.match_date,
       }),
@@ -224,16 +230,18 @@ export default function MatchAdminRow({
         <div className="flex items-center gap-2">
           <input
             type="number"
+            min={0}
             value={homeScore}
-            onChange={(e) => setHomeScore(e.target.value)}
+            onChange={(e) => setHomeScore(e.target.value.replace("-", ""))}
             placeholder="—"
             className="w-10 bg-panel-raised rounded px-1 py-1 text-xs text-ivory text-center"
           />
           <span className="text-muted text-xs">:</span>
           <input
             type="number"
+            min={0}
             value={awayScore}
-            onChange={(e) => setAwayScore(e.target.value)}
+            onChange={(e) => setAwayScore(e.target.value.replace("-", ""))}
             placeholder="—"
             className="w-10 bg-panel-raised rounded px-1 py-1 text-xs text-ivory text-center"
           />
@@ -328,9 +336,29 @@ export default function MatchAdminRow({
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
             />
             <input
+              type="number"
+              min={0}
+              max={10}
+              step={0.1}
+              value={refereeRating}
+              onChange={(e) => setRefereeRating(e.target.value)}
+              placeholder="Оцінка рефері (0-10)"
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            />
+            <input
               value={coachName}
               onChange={(e) => setCoachName(e.target.value)}
               placeholder="Тренер"
+              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            />
+            <input
+              type="number"
+              min={0}
+              max={10}
+              step={0.1}
+              value={coachRatingOverride}
+              onChange={(e) => setCoachRatingOverride(e.target.value)}
+              placeholder="Оцінка тренера (авто, можна виправити)"
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
             />
           </div>

@@ -52,6 +52,16 @@ export async function getSeasonRows() {
   return data ?? [];
 }
 
+export async function getSeasonRowsByCompetition() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase.from("season_stats_by_competition").select("*");
+  if (error) {
+    console.error("getSeasonRowsByCompetition", error);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getAllMatches() {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
@@ -86,7 +96,7 @@ export async function getLineupForMatch(matchId: string) {
   const { data, error } = await supabase
     .from("match_lineups")
     .select(
-      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, formation_slot, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, position, nationality)"
+      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, formation_slot, fun_fact, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, position, nationality)"
     )
     .eq("match_id", matchId);
   if (error) {
@@ -193,6 +203,38 @@ export async function getMyVotesForMatch(matchId: string) {
     ratings: Object.fromEntries(votes.map((v) => [v.player_id, v.rating])) as Record<string, number>,
     mvpPlayerId: mvp?.player_id ?? null,
   };
+}
+
+export async function getVoterTopPlayers(voterId: string, limit = 3) {
+  const { createServiceClient } = await import("@/lib/supabase/service");
+  const supabase = createServiceClient();
+
+  const { data: votes } = await supabase.from("votes").select("player_id, rating").eq("voter_id", voterId);
+  if (!votes || votes.length === 0) return [];
+
+  const byPlayer: Record<string, number[]> = {};
+  for (const v of votes) {
+    byPlayer[v.player_id] = byPlayer[v.player_id] ?? [];
+    byPlayer[v.player_id].push(v.rating);
+  }
+  const averaged = Object.entries(byPlayer)
+    .map(([playerId, ratings]) => ({
+      playerId,
+      avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+      count: ratings.length,
+    }))
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, limit);
+
+  const { data: players } = await supabase
+    .from("players")
+    .select("id, full_name, jersey_number, photo_url, position, nationality, birth_date")
+    .in("id", averaged.map((a) => a.playerId));
+
+  return averaged.map((a) => ({
+    ...players?.find((p) => p.id === a.playerId),
+    myAverage: Math.round(a.avg * 10) / 10,
+  }));
 }
 
 export async function getFirstTeam() {

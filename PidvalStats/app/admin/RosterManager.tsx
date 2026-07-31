@@ -180,9 +180,11 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
                 <div className="mt-2 pl-8">
                   <PhotoCropEditor
                     photoUrl={val.photoUrl}
-                    focusX={val.focusX}
                     focusY={val.focusY}
-                    onChange={(x, y) => patch(p.id, val, { focusX: x, focusY: y })}
+                    onChange={(y) => {
+                      patch(p.id, val, { focusY: y });
+                      save(p, { focusY: y });
+                    }}
                   />
                 </div>
               )}

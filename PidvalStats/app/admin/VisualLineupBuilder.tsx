@@ -25,6 +25,7 @@ export type PlayerDetail = {
   subOutMinute: string; // порожньо = не виходив (відіграв увесь матч)
   subInMinute: string; // на якій хвилині вийшов на поле (заміна)
   subForPlayerId: string; // кого замінив (для замін) — id гравця зі старту
+  funFact: string;
 };
 
 export const emptyDetail: PlayerDetail = {
@@ -37,6 +38,7 @@ export const emptyDetail: PlayerDetail = {
   subOutMinute: "",
   subInMinute: "",
   subForPlayerId: "",
+  funFact: "",
 };
 
 function clampMinute(v: string): string {
@@ -129,7 +131,7 @@ export default function VisualLineupBuilder({
         </button>
       </div>
 
-      <div className="relative w-full aspect-[3/5] md:aspect-[16/12] rounded-xl border border-white/10 bg-void/70 mb-4">
+      <div className="relative w-full max-w-md mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-4">
         {FORMATION_SLOTS.map((def) => {
           const playerId = slotAssignments[def.index];
           const player = playerId ? playerById(playerId) : null;
@@ -167,9 +169,10 @@ export default function VisualLineupBuilder({
 
               {/* Спливаюча панель вибору — з'являється одразу зі списком, без проміжного кроку */}
               <div
-                className={`absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-40 rounded-lg bg-panel border border-gold/30 shadow-xl transition-all duration-150 origin-top ${
+                className={`absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-40 rounded-lg border border-gold/30 shadow-xl transition-all duration-150 origin-top ${
                   isActive ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
                 }`}
+                style={{ backgroundColor: "#17102A" }}
               >
                 <div className="max-h-48 overflow-y-auto py-1">
                   {player && (
@@ -244,6 +247,21 @@ export default function VisualLineupBuilder({
             const sub = playerById(subId);
             const d = details[subId] ?? emptyDetail;
             if (!sub) return null;
+
+            // Уже "зайняті" іншими замінами старт-гравці — щоб двоє не вийшли за одного
+            const claimedByOthers = new Set(
+              subIds
+                .filter((id) => id !== subId)
+                .map((id) => details[id]?.subForPlayerId)
+                .filter(Boolean)
+            );
+            const candidateStarters = startersInSquad.filter((sid) => {
+              const starter = playerById(sid);
+              if (!starter) return false;
+              if (claimedByOthers.has(sid)) return false;
+              return starter.position === sub.position || sid === d.subForPlayerId;
+            });
+
             return (
               <div key={subId} className="flex flex-wrap items-center gap-2 text-[11px] bg-panel rounded-lg px-3 py-2">
                 <span className="text-gold-bright">{sub.full_name}</span>
@@ -254,7 +272,7 @@ export default function VisualLineupBuilder({
                   className="bg-panel-raised rounded px-1.5 py-1 text-ivory"
                 >
                   <option value="">— обери —</option>
-                  {startersInSquad.map((sid) => {
+                  {candidateStarters.map((sid) => {
                     const starter = playerById(sid);
                     return starter ? (
                       <option key={sid} value={sid}>
@@ -331,6 +349,12 @@ export default function VisualLineupBuilder({
                         {d.subOutMinute ? `вийшов на ${d.subOutMinute} хв` : "відіграв увесь матч"}
                       </span>
                     )}
+                    <input
+                      value={d.funFact}
+                      onChange={(e) => setDetail(p.id, { funFact: e.target.value })}
+                      placeholder="цікавий факт (напр. Найбільше ключових передач — 8)"
+                      className="flex-1 min-w-[220px] bg-panel-raised rounded px-2 py-1 text-ivory placeholder:text-muted/60 outline-none"
+                    />
                   </div>
                 </div>
               </div>

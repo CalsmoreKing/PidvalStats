@@ -11,6 +11,10 @@ export type VotablePlayer = {
   isSub?: boolean;
   photoUrl?: string | null;
   nationality?: string | null;
+  minutesPlayed?: number | null;
+  goals?: number;
+  assists?: number;
+  funFact?: string | null;
 };
 
 function PlayerVotePoster({
@@ -43,6 +47,10 @@ function PlayerVotePoster({
         />
       )}
 
+      {/* Затемнення на всю картку одним градієнтом — без різкого шва
+          між фото і кнопками, ледь торкається лівого краю */}
+      <div className="absolute inset-0 bg-gradient-to-r from-panel/15 via-panel/70 to-panel/95" aria-hidden />
+
       <div className="relative h-full flex items-stretch">
         {/* Фото зліва — як на банері профілю */}
         <div className="w-[36%] shrink-0 h-full flex items-end justify-center">
@@ -54,17 +62,14 @@ function PlayerVotePoster({
               className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center bg-panel/40">
+            <div className="h-full w-full flex items-center justify-center">
               <span className="font-display text-3xl text-ivory/20">{shortName(p.name)[0]}</span>
             </div>
           )}
         </div>
 
-        {/* Затемнений градієнт — тільки під кнопками, не заходить на фото */}
-        <div className="flex-1 relative flex flex-col justify-center px-3 py-2 gap-1.5">
-          <div className="absolute inset-0 bg-gradient-to-r from-panel/40 via-panel/85 to-panel/95" aria-hidden />
-
-          <div className="relative flex items-center justify-between mb-1">
+        <div className="flex-1 flex flex-col justify-center px-3 py-2 gap-1">
+          <div className="flex items-center justify-between mb-0.5">
             <div className="text-xs text-ivory truncate">
               <span className="font-utility text-gold-bright/80 mr-1">{p.jersey}</span>
               {shortName(p.name)}
@@ -90,7 +95,16 @@ function PlayerVotePoster({
             )}
           </div>
 
-          <div className="relative flex flex-col gap-1">
+          {(p.minutesPlayed != null || (p.goals ?? 0) > 0 || (p.assists ?? 0) > 0) && (
+            <div className="text-[10px] text-muted flex items-center gap-1.5 flex-wrap">
+              {p.minutesPlayed != null && <span>{p.minutesPlayed}&apos;</span>}
+              {(p.goals ?? 0) > 0 && <span>⚽×{p.goals}</span>}
+              {(p.assists ?? 0) > 0 && <span>👟×{p.assists}</span>}
+            </div>
+          )}
+          {p.funFact && <div className="text-[10px] text-gold-bright/80 leading-snug">{p.funFact}</div>}
+
+          <div className="flex flex-col gap-1 mt-0.5">
             <div className="grid grid-cols-5 gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />

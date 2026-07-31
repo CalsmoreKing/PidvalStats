@@ -10,16 +10,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { homeScore, awayScore, venue, referee, coachName, matchDate, competitionId, isCancelled } =
+  const { homeScore, awayScore, venue, referee, refereeRating, coachName, coachRating, matchDate, competitionId, isCancelled } =
     await req.json();
   const supabase = createServiceClient();
 
   const patch: Record<string, unknown> = {};
-  if (homeScore !== undefined) patch.home_score = homeScore;
-  if (awayScore !== undefined) patch.away_score = awayScore;
+  if (homeScore !== undefined) patch.home_score = homeScore == null ? null : Math.max(0, homeScore);
+  if (awayScore !== undefined) patch.away_score = awayScore == null ? null : Math.max(0, awayScore);
   if (venue !== undefined) patch.venue = venue;
   if (referee !== undefined) patch.referee = referee;
+  if (refereeRating !== undefined) patch.referee_rating = refereeRating;
   if (coachName !== undefined) patch.coach_name = coachName;
+  if (coachRating !== undefined) patch.coach_rating = coachRating;
   if (matchDate !== undefined) patch.match_date = matchDate;
   if (competitionId !== undefined) patch.competition_id = competitionId;
   if (isCancelled !== undefined) patch.is_cancelled = isCancelled;

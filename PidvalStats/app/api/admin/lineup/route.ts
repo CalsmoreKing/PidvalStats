@@ -15,6 +15,7 @@ type LineupInput = {
   yellowCards?: number;
   redCards?: number;
   subInMinute?: number | null;
+  funFact?: string | null;
   subOutMinute?: number | null;
   formationSlot?: number | null;
 };
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
     yellow_cards: r.yellowCards ?? 0,
     red_cards: r.redCards ?? 0,
     sub_in_minute: r.subInMinute ?? null,
+    fun_fact: r.funFact ?? null,
     sub_out_minute: r.subOutMinute ?? null,
     formation_slot: r.formationSlot ?? null,
   }));
