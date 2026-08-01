@@ -13,6 +13,9 @@ type RosterPlayer = {
   positions?: string[] | null;
   nationality?: string | null;
   photo_url?: string | null;
+  photo_focus_x?: number | null;
+  photo_focus_y?: number | null;
+  photo_zoom?: number | null;
 };
 
 export type PlayerDetail = {
@@ -68,6 +71,7 @@ export default function VisualLineupBuilder({
 }) {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [showAllForSlot, setShowAllForSlot] = useState(false);
+  const [showAllForSub, setShowAllForSub] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
 
@@ -110,6 +114,19 @@ export default function VisualLineupBuilder({
   }
 
   // Автоматично рахуємо пару "хто вийшов / хто зайшов" при зміні хвилини заміни
+  // Лише один капітан на весь склад — знімаємо позначку з усіх інших
+  function setCaptain(playerId: string) {
+    const makingCaptain = !(details[playerId]?.isCaptain ?? false);
+    const allIds = [...startersInSquad, ...subIds];
+    for (const id of allIds) {
+      if (id === playerId) {
+        setDetail(id, { isCaptain: makingCaptain });
+      } else if (details[id]?.isCaptain) {
+        setDetail(id, { isCaptain: false });
+      }
+    }
+  }
+
   function setSubPairing(subPlayerId: string, forPlayerId: string, minute: string) {
     const m = clampMinute(minute);
     setDetail(subPlayerId, { subForPlayerId: forPlayerId, subInMinute: m });
@@ -121,7 +138,7 @@ export default function VisualLineupBuilder({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] text-muted">Тисни на кружечок, щоб призначити гравця на цю позицію.</p>
+        <p></p>
         <button
           onClick={duplicatePrevious}
           disabled={duplicating}
@@ -157,6 +174,9 @@ export default function VisualLineupBuilder({
                       shortName: player.short_name,
                       jersey: player.jersey_number,
                       photoUrl: player.photo_url,
+                      photoFocusX: player.photo_focus_x,
+                      photoFocusY: player.photo_focus_y,
+                      photoZoom: player.photo_zoom,
                       nationality: player.nationality,
                     }}
                   />
@@ -167,12 +187,15 @@ export default function VisualLineupBuilder({
                 )}
               </button>
 
-              {/* Спливаюча панель вибору — з'являється одразу зі списком, без проміжного кроку */}
+              {/* Спливаюча панель вибору — з'являється одразу зі списком, без проміжного кроку.
+                  Для нижньої половини поля відкриваємо ВГОРУ, щоб не залазити на заміни знизу. */}
               <div
-                className={`absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-40 rounded-lg border border-gold/30 shadow-xl transition-all duration-150 origin-top ${
+                className={`absolute z-50 ${
+                  def.y > 55 ? "bottom-full mb-1 origin-bottom" : "top-full mt-1 origin-top"
+                } left-1/2 -translate-x-1/2 w-44 rounded-lg border border-gold/40 shadow-2xl transition-all duration-150 ${
                   isActive ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
                 }`}
-                style={{ backgroundColor: "#17102A" }}
+                style={{ backgroundColor: "#0F0A1C" }}
               >
                 <div className="max-h-48 overflow-y-auto py-1">
                   {player && (
@@ -231,6 +254,9 @@ export default function VisualLineupBuilder({
                       shortName: p.short_name,
                       jersey: p.jersey_number,
                       photoUrl: p.photo_url,
+                      photoFocusX: p.photo_focus_x,
+                      photoFocusY: p.photo_focus_y,
+                      photoZoom: p.photo_zoom,
                       nationality: p.nationality,
                     }}
                     compact
@@ -259,6 +285,7 @@ export default function VisualLineupBuilder({
               const starter = playerById(sid);
               if (!starter) return false;
               if (claimedByOthers.has(sid)) return false;
+              if (showAllForSub.has(subId)) return true;
               return starter.position === sub.position || sid === d.subForPlayerId;
             });
 
@@ -281,6 +308,20 @@ export default function VisualLineupBuilder({
                     ) : null;
                   })}
                 </select>
+                <label className="flex items-center gap-1 text-[10px] text-muted">
+                  <input
+                    type="checkbox"
+                    checked={showAllForSub.has(subId)}
+                    onChange={(e) =>
+                      setShowAllForSub((cur) => {
+                        const next = new Set(cur);
+                        e.target.checked ? next.add(subId) : next.delete(subId);
+                        return next;
+                      })
+                    }
+                  />
+                  показати всіх
+                </label>
                 <span className="text-muted">на</span>
                 <input
                   type="number"
@@ -304,51 +345,43 @@ export default function VisualLineupBuilder({
           if (!p) return null;
           const isSub = subIds.includes(p.id);
           const d = details[p.id] ?? emptyDetail;
+          const isOpen = expandedId === p.id;
           return (
             <div key={p.id} className="border-b border-white/5 last:border-0 px-3 py-1.5">
-              <div className="flex items-center gap-2 text-xs">
+              <button
+                onClick={() => setExpandedId(isOpen ? null : p.id)}
+                className="flex items-center gap-2 text-xs w-full text-left"
+              >
                 <span className="flex-1 truncate text-ivory">
                   {p.jersey_number ?? "—"} {p.full_name} {isSub && <span className="eyebrow ml-1">заміна</span>}
+                  {d.isCaptain && <span className="ml-1">©️</span>}
+                  {d.isInjured && <span className="ml-1">🤕</span>}
                 </span>
-                <button
-                  onClick={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
-                  className="text-muted hover:text-ivory transition-colors duration-150"
-                >
-                  {expandedId === p.id ? "▲" : "деталі ▾"}
-                </button>
-              </div>
+                <span className="text-muted">{isOpen ? "▲" : "▾"}</span>
+              </button>
               <div
                 className={`grid transition-all duration-200 ${
-                  expandedId === p.id ? "grid-rows-[1fr] opacity-100 mt-1.5" : "grid-rows-[0fr] opacity-0"
+                  isOpen ? "grid-rows-[1fr] opacity-100 mt-1.5" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
                 <div className="overflow-hidden">
                   <div className="flex flex-wrap items-center gap-2 text-[11px] pb-1">
-                    <label className="flex items-center gap-1 text-muted">
-                      <input
-                        type="checkbox"
-                        checked={d.isCaptain}
-                        onChange={(e) => setDetail(p.id, { isCaptain: e.target.checked })}
-                      />
-                      капітан
-                    </label>
-                    <label className="flex items-center gap-1 text-muted">
-                      <input
-                        type="checkbox"
-                        checked={d.isInjured}
-                        onChange={(e) => setDetail(p.id, { isInjured: e.target.checked })}
-                      />
-                      травма
-                    </label>
-                    <MiniNum label="голи" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
-                    <MiniNum label="асисти" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
-                    <MiniNum label="ЖК" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
-                    <MiniNum label="ЧК" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
-                    {!isSub && (
-                      <span className="text-muted">
-                        {d.subOutMinute ? `вийшов на ${d.subOutMinute} хв` : "відіграв увесь матч"}
-                      </span>
-                    )}
+                    <IconToggle
+                      icon="©️"
+                      title="Капітан"
+                      active={d.isCaptain}
+                      onClick={() => setCaptain(p.id)}
+                    />
+                    <IconToggle
+                      icon="🤕"
+                      title="Травма"
+                      active={d.isInjured}
+                      onClick={() => setDetail(p.id, { isInjured: !d.isInjured })}
+                    />
+                    <MiniNum icon="⚽" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
+                    <MiniNum icon="👟" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
+                    <MiniNum icon="🟨" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
+                    <MiniNum icon="🟥" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
                     <input
                       value={d.funFact}
                       onChange={(e) => setDetail(p.id, { funFact: e.target.value })}
@@ -367,18 +400,19 @@ export default function VisualLineupBuilder({
 }
 
 function MiniNum({
-  label,
+  icon,
   value,
   onChange,
   max = 20,
 }: {
-  label: string;
+  icon: string;
   value: number;
   onChange: (v: number) => void;
   max?: number;
 }) {
   return (
     <label className="flex items-center gap-1 text-muted">
+      <span>{icon}</span>
       <input
         type="number"
         min={0}
@@ -387,7 +421,31 @@ function MiniNum({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-10 bg-panel-raised rounded px-1 py-1 text-ivory"
       />
-      {label}
     </label>
+  );
+}
+
+function IconToggle({
+  icon,
+  active,
+  onClick,
+  title,
+}: {
+  icon: string;
+  active: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`h-7 w-7 rounded flex items-center justify-center transition-all duration-150 ${
+        active ? "bg-gold/30 ring-1 ring-gold/60" : "bg-panel-raised opacity-40 hover:opacity-70"
+      }`}
+    >
+      {icon}
+    </button>
   );
 }

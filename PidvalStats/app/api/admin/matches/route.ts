@@ -30,6 +30,16 @@ export async function POST(req: NextRequest) {
   const kickoff = new Date(matchDate);
   const suggestedVotingOpensAt = new Date(kickoff.getTime() + 105 * 60_000);
 
+  async function upsertByName(table: "referees" | "coaches", name: string | null) {
+    if (!name) return null;
+    const { data: existing } = await supabase.from(table).select("id").eq("name", name).maybeSingle();
+    if (existing) return existing.id;
+    const { data: created } = await supabase.from(table).insert({ name }).select("id").single();
+    return created?.id ?? null;
+  }
+  const refereeId = await upsertByName("referees", referee || null);
+  const coachId = await upsertByName("coaches", coachName || null);
+
   const { data, error } = await supabase
     .from("matches")
     .insert({
@@ -41,7 +51,9 @@ export async function POST(req: NextRequest) {
       match_date: kickoff.toISOString(),
       venue: venue || null,
       referee: referee || null,
+      referee_id: refereeId,
       coach_name: coachName || null,
+      coach_id: coachId,
       status: "scheduled",
     })
     .select()

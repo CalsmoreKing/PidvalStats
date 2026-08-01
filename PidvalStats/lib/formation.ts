@@ -9,6 +9,7 @@ export type LineupPlayer = {
   photoUrl?: string | null;
   photoFocusX?: number | null;
   photoFocusY?: number | null;
+  photoZoom?: number | null;
   nationality?: string | null;
   goals?: number;
   assists?: number;

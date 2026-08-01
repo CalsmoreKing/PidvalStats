@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function VotingCountdown({ closesAt }: { closesAt: string }) {
+export default function VotingCountdown({ closesAt, className }: { closesAt: string; className?: string }) {
   const [remaining, setRemaining] = useState<number>(() =>
     Math.max(0, new Date(closesAt).getTime() - Date.now())
   );
@@ -19,11 +19,11 @@ export default function VotingCountdown({ closesAt }: { closesAt: string }) {
   const sec = totalSec % 60;
 
   if (remaining <= 0) {
-    return <span className="text-muted">підраховуємо…</span>;
+    return <span className={className ?? "text-muted"}>підраховуємо…</span>;
   }
 
   return (
-    <span className="font-utility text-gold-bright">
+    <span className={`font-utility ${className ?? "text-gold-bright"}`}>
       {min}:{sec.toString().padStart(2, "0")}
     </span>
   );

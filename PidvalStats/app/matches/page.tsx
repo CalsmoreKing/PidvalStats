@@ -1,31 +1,27 @@
 import Link from "next/link";
 import { getAllMatches, getFirstTeam } from "@/lib/queries";
-import { matchStatusLabel } from "@/lib/display";
+import { matchStatusLabel, matchPhase } from "@/lib/display";
 import VotingCountdown from "@/components/VotingCountdown";
+import LocalDateTime from "@/components/LocalDateTime";
 
 export const dynamic = "force-dynamic";
 
-function statusColor(status: string) {
-  switch (status) {
-    case "live":
-      return "text-gold-bright animate-pulse";
-    case "voting_open":
-      return "text-gold-bright";
-    default:
-      return "text-muted";
+function phaseBorder(m: any): string {
+  if (m.is_cancelled) return "border-white/5 bg-panel opacity-50";
+  if (m.status === "voting_open") {
+    return "border-gold bg-panel shadow-[0_0_18px_rgba(212,175,55,0.4)]";
   }
-}
-
-function monthLabelUk(iso: string) {
-  return new Date(iso).toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
-}
-function dayLabelUk(iso: string) {
-  return new Date(iso).toLocaleDateString("uk-UA", { day: "numeric", month: "long" });
+  if (m.status === "live") {
+    const phase = matchPhase(m.match_date);
+    if (phase === "halftime") return "border-yellow-400 bg-panel shadow-[0_0_14px_rgba(250,204,21,0.3)]";
+    return "border-green-400 bg-panel shadow-[0_0_14px_rgba(74,222,128,0.3)]";
+  }
+  return "border-white/5 bg-panel";
 }
 
 export default async function MatchesPage() {
   const [matches, team] = await Promise.all([getAllMatches(), getFirstTeam()]);
-  let lastMonth = "";
+  let lastMonthKey = "";
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
@@ -33,41 +29,31 @@ export default async function MatchesPage() {
       <h1 className="font-display text-3xl text-ivory mb-8">Матчі</h1>
 
       {matches.length === 0 ? (
-        <p className="text-sm text-muted">
-          Ще немає жодного матчу — додай перший через адмін-панель (/admin).
-        </p>
+        <p className="text-sm text-muted">Ще немає жодного матчу.</p>
       ) : (
         <div className="flex flex-col gap-3">
           {matches.map((m: any) => {
-            const month = monthLabelUk(m.match_date);
-            const showMonthHeader = month !== lastMonth;
-            lastMonth = month;
+            const monthKey = new Date(m.match_date).toISOString().slice(0, 7);
+            const showMonthHeader = monthKey !== lastMonthKey;
+            lastMonthKey = monthKey;
             const score =
-              m.home_score != null && m.away_score != null
-                ? `${m.home_score}:${m.away_score}`
-                : "–:–";
+              m.home_score != null && m.away_score != null ? `${m.home_score}:${m.away_score}` : "–:–";
 
             return (
               <div key={m.id}>
                 {showMonthHeader ? (
                   <div className="font-display text-lg text-gold-bright capitalize mt-4 mb-2 first:mt-0">
-                    {month}
+                    <LocalDateTime iso={m.match_date} mode="date" />
                   </div>
                 ) : (
                   <div className="text-[11px] text-muted/70 mt-1 mb-1 pl-1">
-                    {dayLabelUk(m.match_date)}
+                    <LocalDateTime iso={m.match_date} mode="date" />
                   </div>
                 )}
 
                 <Link
                   href={`/matches/${m.id}`}
-                  className={`relative block rounded-xl border px-4 py-4 transition-all duration-200 ${
-                    m.is_cancelled
-                      ? "border-white/5 bg-panel opacity-50"
-                      : m.status === "voting_open"
-                      ? "border-gold bg-panel shadow-[0_0_16px_rgba(212,175,55,0.35)]"
-                      : "border-white/5 bg-panel"
-                  }`}
+                  className={`relative block rounded-xl border-2 px-4 py-4 transition-all duration-200 ${phaseBorder(m)}`}
                 >
                   {m.coach_rating != null && !m.is_cancelled && (
                     <div className="rating-star absolute -top-2 -right-2 h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
@@ -104,25 +90,24 @@ export default async function MatchesPage() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-muted">{m.competitions?.name}</span>
-                    <span className={`text-xs ${m.is_cancelled ? "text-red-400" : statusColor(m.status)}`}>
-                      {m.is_cancelled ? "Скасовано" : matchStatusLabel(m.status)}
-                      {!m.is_cancelled && m.status === "voting_open" && m.voting_closes_at && (
-                        <>
-                          {" · "}
-                          <VotingCountdown closesAt={m.voting_closes_at} />
-                        </>
-                      )}
-                      {!m.is_cancelled &&
-                        ["scheduled", "live", "finished"].includes(m.status) && (
-                          <>
-                            {" · орієнтовно голосування з "}
-                            {new Date(
-                              new Date(m.match_date).getTime() + 105 * 60_000
-                            ).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}
-                          </>
-                        )}
+                    <span className="text-xs text-muted">
+                      {m.competitions?.name} · <LocalDateTime iso={m.match_date} mode="time" />
                     </span>
+
+                    {m.is_cancelled ? (
+                      <span className="text-xs text-red-400">Скасовано</span>
+                    ) : m.status === "voting_open" ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-1 text-[11px] font-medium text-void">
+                        Голосування відкрите
+                        {m.voting_closes_at && (
+                          <span className="font-utility text-void/80">
+                            · <VotingCountdown closesAt={m.voting_closes_at} className="text-void/80" />
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted">{matchStatusLabel(m.status)}</span>
+                    )}
                   </div>
                 </Link>
               </div>

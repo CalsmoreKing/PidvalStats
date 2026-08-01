@@ -13,6 +13,7 @@ type Slot = {
   photoUrl?: string | null;
   photoFocusX?: number | null;
   photoFocusY?: number | null;
+  photoZoom?: number | null;
   nationality?: string | null;
   goals?: number;
   assists?: number;
@@ -57,14 +58,15 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
   const sizeClass = compact ? "w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]" : "w-16 h-16 md:w-20 md:h-20";
   const focusX = slot.photoFocusX ?? 50;
   const focusY = slot.photoFocusY ?? 50;
+  const zoom = (slot.photoZoom ?? 100) / 100;
   const rc = slot.rating != null ? ratingColor(slot.rating) : null;
 
   return (
     <div className="flex flex-col items-center">
       {/* Зовнішня обгортка БЕЗ overflow-hidden — інакше бейджі оцінки/капітана обрізаються */}
       <div className={`relative ${sizeClass}`}>
-        {/* Саме коло — прапор на фоні, обрізане рівно по колу */}
-        <div className="absolute inset-0 rounded-full overflow-hidden border-2 border-gold/60 bg-panel-raised">
+        {/* Саме коло — прапор на фоні, обрізане рівно по колу, товща рамка */}
+        <div className="absolute inset-0 rounded-full overflow-hidden border-[3px] border-gold bg-panel-raised z-10 pointer-events-none">
           {slot.nationality && (
             <div
               className="absolute inset-0 opacity-60"
@@ -83,15 +85,22 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
           )}
         </div>
 
-        {/* Фото — окремий елемент ПОВЕРХ кола, вищий за нього, верх виступає над колом */}
+        {/* Фото — у ВЛАСНІЙ обрізаній рамці (не в тій самій, що бейджі), тому
+            воно фізично не може вилізти за межі, хоч яке було б фото —
+            рамка вища за коло, щоб верх фото "виглядав" над кільцем. */}
         {slot.photoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={slot.photoUrl}
-            alt={label}
-            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-full rounded-t-full object-cover pointer-events-none"
-            style={{ height: "155%", objectPosition: `${focusX}% ${focusY}%` }}
-          />
+          <div
+            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-full overflow-hidden rounded-t-full"
+            style={{ height: "155%" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={slot.photoUrl}
+              alt={label}
+              className="w-full h-full object-cover pointer-events-none"
+              style={{ objectPosition: `${focusX}% ${focusY}%`, transform: `scale(${zoom})` }}
+            />
+          </div>
         )}
 
         {slot.isCaptain && (
@@ -131,13 +140,16 @@ function PitchToken({ slot }: { slot: Slot }) {
 
 export default function FormationPitch({
   coach,
+  coachRating,
   lineup,
   subs,
 }: {
   coach: string | null;
+  coachRating?: number | null;
   lineup: Slot[];
   subs: Slot[];
 }) {
+  const cRc = coachRating != null ? ratingColor(coachRating) : null;
   const subsCompact = subs.length > 6;
 
   return (
@@ -145,6 +157,14 @@ export default function FormationPitch({
       <div className="flex items-center gap-3 mb-4">
         <div className="eyebrow">Тренер</div>
         <div className="font-display text-sm text-ivory">{coach ?? "—"}</div>
+        {coachRating != null && (
+          <span
+            className="rating-star h-6 w-6 flex items-center justify-center font-utility text-[9px] font-bold"
+            style={cRc ? { background: cRc.bg, color: cRc.text } : undefined}
+          >
+            {coachRating.toFixed(1)}
+          </span>
+        )}
       </div>
 
       {/* Портретна орієнтація, як справжнє поле — не розтягуємо в ширину */}

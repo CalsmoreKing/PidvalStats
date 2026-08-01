@@ -12,6 +12,7 @@ type Player = {
   positions?: string[] | null;
   photo_focus_x?: number | null;
   photo_focus_y?: number | null;
+  photo_zoom?: number | null;
 };
 
 type Edit = {
@@ -20,6 +21,7 @@ type Edit = {
   positions: string;
   focusX: number;
   focusY: number;
+  zoom: number;
   fullName: string;
   jerseyNumber: string;
 };
@@ -40,6 +42,7 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
         positions: (p.positions ?? []).join(", "),
         focusX: p.photo_focus_x ?? 50,
         focusY: p.photo_focus_y ?? 50,
+        zoom: p.photo_zoom ?? 100,
         fullName: p.full_name,
         jerseyNumber: p.jersey_number != null ? String(p.jersey_number) : "",
       }
@@ -63,6 +66,7 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
         positions: val.positions ? val.positions.split(",").map((s) => s.trim()).filter(Boolean) : null,
         photoFocusX: val.focusX,
         photoFocusY: val.focusY,
+        photoZoom: val.zoom,
         fullName: val.fullName,
         jerseyNumber: val.jerseyNumber === "" ? null : Number(val.jerseyNumber),
       }),
@@ -180,10 +184,12 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
                 <div className="mt-2 pl-8">
                   <PhotoCropEditor
                     photoUrl={val.photoUrl}
+                    focusX={val.focusX}
                     focusY={val.focusY}
-                    onChange={(y) => {
-                      patch(p.id, val, { focusY: y });
-                      save(p, { focusY: y });
+                    zoom={val.zoom}
+                    onChange={(next) => {
+                      patch(p.id, val, next);
+                      save(p, next);
                     }}
                   />
                 </div>

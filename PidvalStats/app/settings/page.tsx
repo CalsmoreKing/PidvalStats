@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { calcAge } from "@/lib/age";
+import { ratingColor } from "@/lib/display";
 
-type TopPlayer = {
+type StatPlayer = {
   id: string;
   full_name: string;
   jersey_number: number | null;
@@ -21,7 +22,9 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [uploading, setUploading] = useState(false);
-  const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
+  const [top, setTop] = useState<StatPlayer[]>([]);
+  const [bottom, setBottom] = useState<StatPlayer[]>([]);
+  const [histogram, setHistogram] = useState<{ score: number; count: number }[]>([]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -36,7 +39,11 @@ export default function SettingsPage() {
       });
     fetch("/api/profile/top-players")
       .then((r) => r.json())
-      .then((d) => setTopPlayers(d.players ?? []));
+      .then((d) => {
+        setTop(d.top ?? []);
+        setBottom(d.bottom ?? []);
+        setHistogram(d.histogram ?? []);
+      });
   }, []);
 
   async function save(overrideAvatar?: string) {
@@ -72,6 +79,8 @@ export default function SettingsPage() {
     );
   }
 
+  const maxHist = Math.max(1, ...histogram.map((h) => h.count));
+
   return (
     <div className="px-4 md:px-12 py-8 max-w-md mx-auto">
       <div className="eyebrow mb-1">Налаштування</div>
@@ -79,18 +88,15 @@ export default function SettingsPage() {
 
       <div className="flex flex-col gap-4 mb-10">
         <div>
-          <div className="eyebrow mb-1">Юзернейм (з Telegram)</div>
+          <div className="eyebrow mb-1">Юзернейм</div>
           <div className="text-sm text-muted">@{username}</div>
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="eyebrow">Ім'я, яке бачать інші</span>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
-          />
-        </label>
+        <input
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
+        />
 
         <div className="flex items-center gap-3">
           {avatarUrl && (
@@ -98,7 +104,7 @@ export default function SettingsPage() {
             <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
           )}
           <label className="text-xs rounded-lg bg-panel-raised px-3 py-2 cursor-pointer text-ivory hover:text-gold-bright transition-colors duration-150">
-            {uploading ? "Завантажуємо…" : "Завантажити фото з пристрою"}
+            {uploading ? "…" : "Завантажити фото з пристрою"}
             <input
               type="file"
               accept="image/*"
@@ -113,43 +119,71 @@ export default function SettingsPage() {
           disabled={status === "saving"}
           className="self-start rounded-lg bg-gold text-void font-display px-5 py-2 disabled:opacity-40 transition-opacity duration-150"
         >
-          {status === "saving" ? "Зберігаємо…" : status === "saved" ? "Збережено ✓" : "Зберегти"}
+          {status === "saving" ? "…" : status === "saved" ? "✓" : "Зберегти"}
         </button>
       </div>
 
-      {topPlayers.length > 0 && (
-        <div>
-          <div className="eyebrow mb-3">Твої топ-3 гравці (за твоїми оцінками)</div>
-          <div className="flex flex-col gap-2">
-            {topPlayers.map((p, i) => (
-              <Link
-                key={p.id}
-                href={`/players/${p.id}`}
-                className="flex items-center gap-3 rounded-lg bg-panel px-3 py-2 hover:bg-panel-raised transition-colors duration-150"
-              >
-                <span className="font-display text-gold/50 w-4">{i + 1}</span>
-                <div className="h-9 w-9 rounded-full bg-panel-raised overflow-hidden flex items-center justify-center shrink-0">
-                  {p.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.photo_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-xs text-ivory/40">{p.full_name[0]}</span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-ivory truncate">{p.full_name}</div>
-                  <div className="text-[10px] text-muted">
-                    {p.position} · {calcAge(p.birth_date)} років
-                  </div>
-                </div>
-                <div className="rating-star h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
-                  {p.myAverage.toFixed(1)}
-                </div>
-              </Link>
+      {histogram.some((h) => h.count > 0) && (
+        <div className="mb-10">
+          <div className="eyebrow mb-3">Твої оцінки</div>
+          <div className="flex items-end gap-1 h-20">
+            {histogram.map((h) => (
+              <div key={h.score} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t bg-gold/60"
+                  style={{ height: `${Math.max(4, (h.count / maxHist) * 100)}%` }}
+                />
+                <span className="text-[9px] text-muted font-utility">{h.score}</span>
+              </div>
             ))}
           </div>
         </div>
       )}
+
+      {top.length > 0 && <PlayerStatList title="Твої улюблені" items={top} />}
+      {bottom.length > 0 && <PlayerStatList title="Твої найгірші" items={bottom} />}
+    </div>
+  );
+}
+
+function PlayerStatList({ title, items }: { title: string; items: StatPlayer[] }) {
+  return (
+    <div className="mb-10">
+      <div className="eyebrow mb-3">{title}</div>
+      <div className="flex flex-col gap-2">
+        {items.map((p, i) => {
+          const rc = ratingColor(p.myAverage);
+          return (
+            <Link
+              key={p.id}
+              href={`/players/${p.id}`}
+              className="flex items-center gap-3 rounded-lg bg-panel px-3 py-2 hover:bg-panel-raised transition-colors duration-150"
+            >
+              <span className="font-display text-gold/50 w-4">{i + 1}</span>
+              <div className="h-9 w-9 rounded-full bg-panel-raised overflow-hidden flex items-center justify-center shrink-0">
+                {p.photo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.photo_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs text-ivory/40">{p.full_name[0]}</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-ivory truncate">{p.full_name}</div>
+                <div className="text-[10px] text-muted">
+                  {p.position} · {calcAge(p.birth_date)} років
+                </div>
+              </div>
+              <div
+                className="rating-star h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold"
+                style={{ background: rc.bg, color: rc.text }}
+              >
+                {p.myAverage.toFixed(1)}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -96,7 +96,7 @@ export async function getLineupForMatch(matchId: string) {
   const { data, error } = await supabase
     .from("match_lineups")
     .select(
-      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, formation_slot, fun_fact, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, position, nationality)"
+      "id, is_starting, is_captain, minutes_played, goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, avg_rating, formation_slot, fun_fact, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, photo_zoom, position, nationality)"
     )
     .eq("match_id", matchId);
   if (error) {
@@ -111,7 +111,7 @@ export async function getRoster(teamSlug: "first_team" | "atletic" = "first_team
   const { data, error } = await supabase
     .from("players")
     .select(
-      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, teams!inner(slug)"
+      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, teams!inner(slug)"
     )
     .eq("teams.slug", teamSlug)
     .order("jersey_number", { ascending: true, nullsFirst: false });
@@ -205,36 +205,66 @@ export async function getMyVotesForMatch(matchId: string) {
   };
 }
 
-export async function getVoterTopPlayers(voterId: string, limit = 3) {
+export async function getVoterStats(voterId: string) {
   const { createServiceClient } = await import("@/lib/supabase/service");
   const supabase = createServiceClient();
 
   const { data: votes } = await supabase.from("votes").select("player_id, rating").eq("voter_id", voterId);
-  if (!votes || votes.length === 0) return [];
+  if (!votes || votes.length === 0) return { top: [], bottom: [], histogram: [] };
 
   const byPlayer: Record<string, number[]> = {};
+  const histCounts: Record<number, number> = {};
   for (const v of votes) {
     byPlayer[v.player_id] = byPlayer[v.player_id] ?? [];
     byPlayer[v.player_id].push(v.rating);
+    histCounts[v.rating] = (histCounts[v.rating] ?? 0) + 1;
   }
-  const averaged = Object.entries(byPlayer)
-    .map(([playerId, ratings]) => ({
-      playerId,
-      avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
-      count: ratings.length,
-    }))
-    .sort((a, b) => b.avg - a.avg)
-    .slice(0, limit);
+  const averaged = Object.entries(byPlayer).map(([playerId, ratings]) => ({
+    playerId,
+    avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+  }));
 
+  const top = [...averaged].sort((a, b) => b.avg - a.avg).slice(0, 3);
+  const bottom = [...averaged].sort((a, b) => a.avg - b.avg).slice(0, 3);
+  const histogram = Array.from({ length: 10 }, (_, i) => ({ score: i + 1, count: histCounts[i + 1] ?? 0 }));
+
+  const ids = [...new Set([...top, ...bottom].map((a) => a.playerId))];
   const { data: players } = await supabase
     .from("players")
     .select("id, full_name, jersey_number, photo_url, position, nationality, birth_date")
-    .in("id", averaged.map((a) => a.playerId));
+    .in("id", ids);
 
-  return averaged.map((a) => ({
-    ...players?.find((p) => p.id === a.playerId),
-    myAverage: Math.round(a.avg * 10) / 10,
-  }));
+  const attach = (arr: typeof top) =>
+    arr.map((a) => ({
+      ...players?.find((p) => p.id === a.playerId),
+      myAverage: Math.round(a.avg * 10) / 10,
+    }));
+
+  return { top: attach(top), bottom: attach(bottom), histogram };
+}
+
+export async function getRefereeNames() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase.from("referees").select("name").order("name");
+  return (data ?? []).map((r) => r.name);
+}
+
+export async function getCoachNames() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase.from("coaches").select("name").order("name");
+  return (data ?? []).map((c) => c.name);
+}
+
+export async function getSeasonRefereeRatings() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase.from("season_referee_ratings").select("*").order("avg_rating", { ascending: false });
+  return data ?? [];
+}
+
+export async function getSeasonCoachRatings() {
+  const supabase = createServerSupabase();
+  const { data } = await supabase.from("season_coach_ratings").select("*").order("avg_rating", { ascending: false });
+  return data ?? [];
 }
 
 export async function getFirstTeam() {

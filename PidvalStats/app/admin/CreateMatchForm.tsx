@@ -8,9 +8,13 @@ type LastMatch = { competition_id: string; is_home: boolean; coach_name: string 
 export default function CreateMatchForm({
   competitions,
   lastMatch,
+  refereeNames,
+  coachNames,
 }: {
   competitions: { id: string; name: string }[];
   lastMatch: LastMatch;
+  refereeNames: string[];
+  coachNames: string[];
 }) {
   const router = useRouter();
   const [opponent, setOpponent] = useState("");
@@ -106,18 +110,27 @@ export default function CreateMatchForm({
           value={referee}
           onChange={(e) => setReferee(e.target.value)}
           placeholder="Рефері"
+          list="referee-names"
           className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
         />
+        <datalist id="referee-names">
+          {refereeNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
         <input
           value={coachName}
           onChange={(e) => setCoachName(e.target.value)}
           placeholder="Тренер"
+          list="coach-names"
           className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
         />
+        <datalist id="coach-names">
+          {coachNames.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
       </div>
-      <p className="text-[11px] text-muted -mt-1">
-        Турнір, "домашній матч" і тренер підтягнуті з попереднього матчу — онови, якщо треба.
-      </p>
 
       {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}
 

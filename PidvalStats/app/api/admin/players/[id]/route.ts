@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { photoUrl, shortName, positions, photoFocusX, photoFocusY, fullName, jerseyNumber } = await req.json();
+  const { photoUrl, shortName, positions, photoFocusX, photoFocusY, photoZoom, fullName, jerseyNumber } = await req.json();
   const supabase = createServiceClient();
 
   const patch: Record<string, unknown> = {};
@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (positions !== undefined) patch.positions = positions;
   if (photoFocusX !== undefined) patch.photo_focus_x = photoFocusX;
   if (photoFocusY !== undefined) patch.photo_focus_y = photoFocusY;
+  if (photoZoom !== undefined) patch.photo_zoom = photoZoom;
   if (fullName !== undefined) patch.full_name = fullName;
   if (jerseyNumber !== undefined) patch.jersey_number = jerseyNumber;
 

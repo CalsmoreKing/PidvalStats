@@ -21,7 +21,15 @@ export function matchStatusLabel(status: string): string {
   return MATCH_STATUS_LABELS[status] ?? status;
 }
 
-// Колірна шкала оцінки: низька — червона, висока — зелена
+// Орієнтовна фаза матчу, поки він "live" — рахуємо просто від часу кікоффа,
+// бо не ведемо окремого "поточна хвилина" вручну.
+export function matchPhase(matchDateIso: string): "first-half" | "halftime" | "second-half" | "over" {
+  const elapsedMin = (Date.now() - new Date(matchDateIso).getTime()) / 60_000;
+  if (elapsedMin < 45) return "first-half";
+  if (elapsedMin < 60) return "halftime";
+  if (elapsedMin < 115) return "second-half";
+  return "over";
+}
 export function ratingColor(rating: number): { bg: string; text: string } {
   if (rating >= 8.5) return { bg: "#2FBF71", text: "#0B2818" };
   if (rating >= 7) return { bg: "#8FCB4A", text: "#17240A" };

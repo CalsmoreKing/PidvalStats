@@ -7,6 +7,8 @@ import {
   getVoters,
   getLineupForMatch,
   getFirstTeam,
+  getRefereeNames,
+  getCoachNames,
 } from "@/lib/queries";
 import CreateMatchForm from "./CreateMatchForm";
 import MatchAdminRow from "./MatchAdminRow";
@@ -33,13 +35,15 @@ export default async function AdminPage() {
     );
   }
 
-  const [matches, competitions, roster, lastMatch, voters, team] = await Promise.all([
+  const [matches, competitions, roster, lastMatch, voters, team, refereeNames, coachNames] = await Promise.all([
     getAllMatches(),
     getCompetitions(),
     getRoster("first_team"),
     getLastMatch(),
     getVoters(),
     getFirstTeam(),
+    getRefereeNames(),
+    getCoachNames(),
   ]);
 
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
@@ -48,14 +52,14 @@ export default async function AdminPage() {
     <>
       <section className="mb-10">
         <h2 className="font-display text-xl text-ivory mb-4">Створити матч</h2>
-        <CreateMatchForm competitions={competitions} lastMatch={lastMatch} />
+        <CreateMatchForm competitions={competitions} lastMatch={lastMatch} refereeNames={refereeNames} coachNames={coachNames} />
       </section>
       <section>
         <h2 className="font-display text-xl text-ivory mb-4">Матчі</h2>
         <div className="flex flex-col gap-3">
           {matches.length === 0 && <p className="text-sm text-muted">Матчів ще немає.</p>}
           {matches.map((m: any, i: number) => (
-            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} competitions={competitions} />
+            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} competitions={competitions} refereeNames={refereeNames} coachNames={coachNames} />
           ))}
         </div>
       </section>

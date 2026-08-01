@@ -27,6 +27,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       photoUrl: r.players.photo_url,
       photoFocusX: r.players.photo_focus_x,
       photoFocusY: r.players.photo_focus_y,
+      photoZoom: r.players.photo_zoom,
       nationality: r.players.nationality,
       goals: r.goals,
       assists: r.assists,
@@ -46,6 +47,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       photoUrl: r.players.photo_url,
       photoFocusX: r.players.photo_focus_x,
       photoFocusY: r.players.photo_focus_y,
+      photoZoom: r.players.photo_zoom,
       nationality: r.players.nationality,
       goals: r.goals,
       assists: r.assists,
@@ -115,16 +117,12 @@ export default async function MatchDetailPage({ params }: { params: { id: string
           11 і заміни.
         </p>
       ) : (
-        <FormationPitch coach={match.coach_name} lineup={pitchSlots} subs={subs} />
+        <FormationPitch coach={match.coach_name} coachRating={match.coach_rating} lineup={pitchSlots} subs={subs} />
       )}
 
       {match.status === "voting_open" && votablePlayers.length > 0 && (
         <div className="mt-10">
-          <h2 className="font-display text-xl text-ivory mb-1">Голосування</h2>
-          <p className="text-xs text-muted mb-4">
-            Онови всім гравцям оцінку 1–10 і, за бажанням, обери MVP — голос
-            зараховується одним пакетом, коли натиснеш «Надіслати».
-          </p>
+          <h2 className="font-display text-xl text-ivory mb-4">Голосування</h2>
           <VotingForm matchId={match.id} players={votablePlayers} initialVotes={myVotes} />
         </div>
       )}

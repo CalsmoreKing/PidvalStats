@@ -50,11 +50,15 @@ export default function MatchAdminRow({
   roster,
   existingLineup,
   competitions,
+  refereeNames,
+  coachNames,
 }: {
   match: any;
   roster: RosterPlayer[];
   existingLineup: any[];
   competitions: { id: string; name: string }[];
+  refereeNames: string[];
+  coachNames: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -233,6 +237,7 @@ export default function MatchAdminRow({
             min={0}
             value={homeScore}
             onChange={(e) => setHomeScore(e.target.value.replace("-", ""))}
+            onBlur={saveScore}
             placeholder="—"
             className="w-10 bg-panel-raised rounded px-1 py-1 text-xs text-ivory text-center"
           />
@@ -242,16 +247,11 @@ export default function MatchAdminRow({
             min={0}
             value={awayScore}
             onChange={(e) => setAwayScore(e.target.value.replace("-", ""))}
+            onBlur={saveScore}
             placeholder="—"
             className="w-10 bg-panel-raised rounded px-1 py-1 text-xs text-ivory text-center"
           />
-          <button
-            onClick={saveScore}
-            disabled={savingScore}
-            className="text-[11px] rounded-lg border border-white/10 text-muted px-2 py-1.5 hover:text-ivory disabled:opacity-40"
-          >
-            {savingScore ? "…" : "рахунок"}
-          </button>
+          {savingScore && <span className="text-[10px] text-muted">…</span>}
           {(match.status === "scheduled" || match.status === "live" || match.status === "finished") && (
             <button
               onClick={openVoting}
@@ -333,8 +333,14 @@ export default function MatchAdminRow({
               value={referee}
               onChange={(e) => setReferee(e.target.value)}
               placeholder="Рефері"
+              list="referee-names-edit"
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
             />
+            <datalist id="referee-names-edit">
+              {refereeNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
             <input
               type="number"
               min={0}
@@ -349,8 +355,14 @@ export default function MatchAdminRow({
               value={coachName}
               onChange={(e) => setCoachName(e.target.value)}
               placeholder="Тренер"
+              list="coach-names-edit"
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
             />
+            <datalist id="coach-names-edit">
+              {coachNames.map((n) => (
+                <option key={n} value={n} />
+              ))}
+            </datalist>
             <input
               type="number"
               min={0}
