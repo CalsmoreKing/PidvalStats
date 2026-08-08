@@ -1,5 +1,6 @@
 import { shortName, ratingColor } from "@/lib/display";
 import { flagUrl } from "@/lib/flags";
+import { BallIcon, BootIcon } from "@/components/icons";
 
 type Slot = {
   id: string;
@@ -36,10 +37,10 @@ function EventIcons({ slot }: { slot: Slot }) {
   return (
     <div className="flex items-center justify-center gap-0.5 mt-0.5 flex-wrap max-w-[90px]">
       {Array.from({ length: Math.min(slot.goals ?? 0, 4) }).map((_, i) => (
-        <span key={`g${i}`} className="text-[9px] leading-none">⚽</span>
+        <BallIcon key={`g${i}`} className="h-3 w-3" />
       ))}
       {Array.from({ length: Math.min(slot.assists ?? 0, 4) }).map((_, i) => (
-        <span key={`a${i}`} className="text-[9px] leading-none">👟</span>
+        <BootIcon key={`a${i}`} className="h-3 w-3" />
       ))}
       {(slot.yellowCards ?? 0) > 0 && <span className="h-2.5 w-2 bg-yellow-400 rounded-[1px] inline-block" />}
       {(slot.redCards ?? 0) > 0 && <span className="h-2.5 w-2 bg-red-500 rounded-[1px] inline-block" />}
@@ -55,7 +56,7 @@ function EventIcons({ slot }: { slot: Slot }) {
 
 export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }) {
   const label = shortName(slot.name, slot.shortName);
-  const sizeClass = compact ? "w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]" : "w-16 h-16 md:w-20 md:h-20";
+  const sizeClass = compact ? "w-14 h-14 md:w-[4.5rem] md:h-[4.5rem]" : "w-16 h-16 md:w-24 md:h-24";
   const focusX = slot.photoFocusX ?? 50;
   const focusY = slot.photoFocusY ?? 50;
   const zoom = (slot.photoZoom ?? 100) / 100;
@@ -63,10 +64,10 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
 
   return (
     <div className="flex flex-col items-center">
-      {/* Зовнішня обгортка БЕЗ overflow-hidden — інакше бейджі оцінки/капітана обрізаються */}
+      {/* Зовнішня обгортка БЕЗ overflow-hidden — інакше бейдж оцінки обрізається */}
       <div className={`relative ${sizeClass}`}>
-        {/* Саме коло — прапор на фоні, обрізане рівно по колу, товща рамка */}
-        <div className="absolute inset-0 rounded-full overflow-hidden border-[3px] border-gold bg-panel-raised z-10 pointer-events-none">
+        {/* Коло — прапор на фоні, фото (якщо є) рівно в межах кола */}
+        <div className="absolute inset-0 rounded-full overflow-hidden border-[3px] border-gold bg-panel-raised">
           {slot.nationality && (
             <div
               className="absolute inset-0 opacity-60"
@@ -78,39 +79,24 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
               aria-hidden
             />
           )}
-          {!slot.photoUrl && (
+          {slot.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slot.photoUrl}
+              alt={label}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: `${focusX}% ${focusY}%`, transform: `scale(${zoom})` }}
+            />
+          ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-display text-lg md:text-xl text-ivory/70 drop-shadow">{label[0]}</span>
+              <span className="font-display text-lg md:text-2xl text-ivory/70 drop-shadow">{label[0]}</span>
             </div>
           )}
         </div>
 
-        {/* Фото — у ВЛАСНІЙ обрізаній рамці (не в тій самій, що бейджі), тому
-            воно фізично не може вилізти за межі, хоч яке було б фото —
-            рамка вища за коло, щоб верх фото "виглядав" над кільцем. */}
-        {slot.photoUrl && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-full overflow-hidden rounded-t-full"
-            style={{ height: "155%" }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={slot.photoUrl}
-              alt={label}
-              className="w-full h-full object-cover pointer-events-none"
-              style={{ objectPosition: `${focusX}% ${focusY}%`, transform: `scale(${zoom})` }}
-            />
-          </div>
-        )}
-
-        {slot.isCaptain && (
-          <div className="absolute -top-1 -left-1 h-4 w-4 md:h-5 md:w-5 rounded-full bg-gold-bright text-void flex items-center justify-center font-utility text-[8px] md:text-[10px] font-bold z-20">
-            C
-          </div>
-        )}
         {slot.rating != null && (
           <div
-            className="rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-7 md:w-7 flex items-center justify-center font-utility text-[9px] md:text-[10px] font-bold z-20"
+            className="rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-8 md:w-8 flex items-center justify-center font-utility text-[9px] md:text-xs font-bold z-20"
             style={rc ? { background: rc.bg, color: rc.text } : undefined}
           >
             {slot.rating.toFixed(1)}
@@ -118,11 +104,12 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
         )}
       </div>
 
-      <div className="mt-1 text-[10px] md:text-xs text-ivory text-center leading-tight whitespace-nowrap">
+      <div className="mt-1 text-[10px] md:text-sm text-ivory text-center leading-tight whitespace-nowrap">
         {slot.jersey != null && <span className="text-gold-bright/80 font-utility mr-1">{slot.jersey}</span>}
         {label}
       </div>
       <EventIcons slot={slot} />
+      {slot.isCaptain && <span className="text-[9px] text-gold-bright">©️ капітан</span>}
     </div>
   );
 }
@@ -168,7 +155,7 @@ export default function FormationPitch({
       </div>
 
       {/* Портретна орієнтація, як справжнє поле — не розтягуємо в ширину */}
-      <div className="relative w-full max-w-md mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8">
+      <div className="relative w-full max-w-md md:max-w-2xl mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8">
         {lineup.map((slot) => (
           <PitchToken key={slot.id} slot={slot} />
         ))}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { flagUrl } from "@/lib/flags";
+import { BallIcon, BootIcon } from "@/components/icons";
 import { shortName } from "@/lib/display";
 
 export type VotablePlayer = {
@@ -98,8 +99,12 @@ function PlayerVotePoster({
           {(p.minutesPlayed != null || (p.goals ?? 0) > 0 || (p.assists ?? 0) > 0) && (
             <div className="text-[10px] text-muted flex items-center gap-1.5 flex-wrap">
               {p.minutesPlayed != null && <span>{p.minutesPlayed}&apos;</span>}
-              {(p.goals ?? 0) > 0 && <span>⚽×{p.goals}</span>}
-              {(p.assists ?? 0) > 0 && <span>👟×{p.assists}</span>}
+              {(p.goals ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5"><BallIcon className="h-3 w-3" />×{p.goals}</span>
+              )}
+              {(p.assists ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5"><BootIcon className="h-3 w-3" />×{p.assists}</span>
+              )}
             </div>
           )}
           {p.funFact && <div className="text-[10px] text-gold-bright/80 leading-snug">{p.funFact}</div>}

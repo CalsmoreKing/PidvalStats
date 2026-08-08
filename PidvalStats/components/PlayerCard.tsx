@@ -67,7 +67,7 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
       </div>
 
       {player.jersey_number != null && (
-        <div className="absolute top-3 left-3 font-utility text-sm text-gold-bright/80 drop-shadow">
+        <div className="absolute top-3 left-3 h-7 w-7 rounded-full bg-void/80 border border-gold/40 flex items-center justify-center font-utility text-xs text-gold-bright">
           {player.jersey_number}
         </div>
       )}

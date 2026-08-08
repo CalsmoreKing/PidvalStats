@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getPlayerProfile } from "@/lib/queries";
 import { calcAge } from "@/lib/age";
 import { flagUrl } from "@/lib/flags";
-import { ratingColor } from "@/lib/display";
+import { ratingColor, pluralMatches } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
 
@@ -29,39 +29,39 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
   return (
     <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
       {/* Заголовок профілю */}
-      <div className="relative rounded-2xl overflow-hidden bg-panel border border-white/5 mb-8">
-        <div
-          className="absolute -inset-6"
-          style={{
-            backgroundImage: `url(${flagUrl(player.nationality, "svg")})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            transform: "rotate(-4deg) scale(1.3)",
-          }}
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-panel/25 via-panel/70 to-panel/95" aria-hidden />
-        <div className="relative flex items-stretch min-h-[160px]">
-          <div className="w-[38%] shrink-0 flex items-end justify-center">
-            {player.photo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={player.photo_url}
-                alt={player.full_name}
-                className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
-              />
-            )}
-          </div>
-          <div className="flex-1 min-w-0 flex flex-col justify-center px-5 py-6">
-            {player.jersey_number != null && (
-              <div className="font-utility text-sm text-gold-bright/80 mb-1">
-                {player.jersey_number}
+      <div className="relative mb-8">
+        <div className="relative rounded-2xl overflow-hidden bg-panel border border-white/5">
+          <div
+            className="absolute -inset-6"
+            style={{
+              backgroundImage: `url(${flagUrl(player.nationality, "svg")})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              transform: "rotate(-4deg) scale(1.3)",
+            }}
+            aria-hidden
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-panel/25 via-panel/70 to-panel/95" aria-hidden />
+          <div className="relative flex items-stretch min-h-[160px]">
+            <div className="w-[38%] shrink-0 flex items-end justify-center">
+              {player.photo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={player.photo_url}
+                  alt={player.full_name}
+                  className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+                />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center px-5 py-6">
+              {player.jersey_number != null && (
+                <div className="font-utility text-sm text-gold-bright/80 mb-1">{player.jersey_number}</div>
+              )}
+              <div className="font-display text-2xl text-ivory leading-tight">{player.full_name}</div>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="eyebrow">{player.position}</span>
+                <span className="text-xs text-muted">{age} років</span>
               </div>
-            )}
-            <div className="font-display text-2xl text-ivory leading-tight">{player.full_name}</div>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="eyebrow">{player.position}</span>
-              <span className="text-xs text-muted">{age} років</span>
             </div>
           </div>
         </div>
@@ -97,23 +97,26 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
         </p>
       ) : (
         <>
-          {/* Форма — останні 5 матчів */}
+          {/* Форма — останні матчі */}
           <section className="mb-10">
-            <div className="eyebrow mb-3">Форма (останні {last5.length})</div>
-            <div className="flex items-end gap-2 h-16">
+            <div className="eyebrow mb-3">Форма — крайні {pluralMatches(last5.length)}</div>
+            <div className="flex items-end gap-2 h-20 bg-panel rounded-xl px-3 pt-4 pb-2">
               {last5.map((h: any, i: number) => {
                 const heightPct = Math.max(15, (h.avg_rating / 10) * 100);
-                const color =
-                  h.avg_rating >= 7.5 ? "bg-gold" : h.avg_rating >= 6 ? "bg-gold/50" : "bg-red-400/60";
+                const rc = ratingColor(h.avg_rating);
                 return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <a
+                    key={i}
+                    href={`/matches/${h.matches.id}`}
+                    className="flex-1 flex flex-col items-center gap-1 group"
+                    title={`${h.avg_rating.toFixed(1)} — ${h.matches.opponent_name}`}
+                  >
                     <div
-                      className={`w-full rounded-t ${color}`}
-                      style={{ height: `${heightPct}%` }}
-                      title={`${h.avg_rating.toFixed(1)} — ${h.matches.opponent_name}`}
+                      className="w-full rounded-t transition-opacity duration-150 group-hover:opacity-80"
+                      style={{ height: `${heightPct}%`, background: rc.bg }}
                     />
                     <span className="text-[9px] text-muted font-utility">{h.avg_rating.toFixed(1)}</span>
-                  </div>
+                  </a>
                 );
               })}
             </div>
@@ -122,18 +125,18 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
           {/* Найкращий / найгірший матч */}
           <section className="grid grid-cols-2 gap-3 mb-10">
             {best && (
-              <div className="rounded-lg border border-gold/20 bg-panel px-3 py-3">
+              <a href={`/matches/${best.matches.id}`} className="rounded-lg border border-gold/20 bg-panel px-3 py-3 block hover:border-gold/40 transition-colors duration-150">
                 <div className="eyebrow mb-1">Найкращий матч</div>
                 <div className="text-sm text-ivory">{best.matches.opponent_name}</div>
                 <div className="text-xs text-muted">{formatDateUk(best.matches.match_date)}</div>
-              </div>
+              </a>
             )}
             {worst && (
-              <div className="rounded-lg border border-white/5 bg-panel px-3 py-3">
+              <a href={`/matches/${worst.matches.id}`} className="rounded-lg border border-white/5 bg-panel px-3 py-3 block hover:border-white/20 transition-colors duration-150">
                 <div className="eyebrow mb-1">Найслабший матч</div>
                 <div className="text-sm text-ivory">{worst.matches.opponent_name}</div>
                 <div className="text-xs text-muted">{formatDateUk(worst.matches.match_date)}</div>
-              </div>
+              </a>
             )}
           </section>
 
@@ -142,7 +145,11 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
             <div className="eyebrow mb-3">Усі оцінені матчі</div>
             <div className="flex flex-col divide-y divide-white/5 rounded-xl border border-white/5 overflow-hidden">
               {[...ratedHistory].reverse().map((h: any, i: number) => (
-                <div key={i} className="flex items-center justify-between px-4 py-3 bg-panel">
+                <a
+                  key={i}
+                  href={`/matches/${h.matches.id}`}
+                  className="flex items-center justify-between px-4 py-3 bg-panel hover:bg-panel-raised transition-colors duration-150"
+                >
                   <div>
                     <div className="text-sm text-ivory">{h.matches.opponent_name}</div>
                     <div className="text-xs text-muted">
@@ -155,7 +162,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
                   >
                     {h.avg_rating.toFixed(1)}
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           </section>

@@ -85,6 +85,7 @@ export default function MatchAdminRow({
   const [openingVoting, setOpeningVoting] = useState(false);
   const [closingVoting, setClosingVoting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteArmed, setDeleteArmed] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -216,10 +217,15 @@ export default function MatchAdminRow({
   }
 
   async function deleteMatch() {
-    if (!confirm("Видалити матч повністю (склад і голоси теж)? Це незворотньо.")) return;
+    if (!deleteArmed) {
+      setDeleteArmed(true);
+      setTimeout(() => setDeleteArmed(false), 4000);
+      return;
+    }
     setDeleting(true);
     const res = await fetch(`/api/admin/matches/${match.id}`, { method: "DELETE" });
     setDeleting(false);
+    setDeleteArmed(false);
     if (res.ok) router.refresh();
   }
 
@@ -292,9 +298,11 @@ export default function MatchAdminRow({
           <button
             onClick={deleteMatch}
             disabled={deleting}
-            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-40"
+            className={`text-xs disabled:opacity-40 transition-colors duration-150 ${
+              deleteArmed ? "text-red-300 font-bold" : "text-red-400 hover:text-red-300"
+            }`}
           >
-            {deleting ? "…" : "видалити"}
+            {deleting ? "…" : deleteArmed ? "Точно видалити?" : "видалити"}
           </button>
         </div>
       </div>

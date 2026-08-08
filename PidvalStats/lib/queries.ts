@@ -173,7 +173,8 @@ export async function getLastMatch() {
 }
 
 export async function getVoters() {
-  const supabase = createServerSupabase();
+  const { createServiceClient } = await import("@/lib/supabase/service");
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("voters")
     .select("id, display_name, telegram_username, telegram_id, created_at")

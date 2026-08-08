@@ -148,7 +148,7 @@ export default function VisualLineupBuilder({
         </button>
       </div>
 
-      <div className="relative w-full max-w-md mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-4">
+      <div className="relative w-full max-w-md md:max-w-2xl mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-4">
         {FORMATION_SLOTS.map((def) => {
           const playerId = slotAssignments[def.index];
           const player = playerId ? playerById(playerId) : null;
@@ -225,7 +225,7 @@ export default function VisualLineupBuilder({
                     checked={showAllForSlot}
                     onChange={(e) => setShowAllForSlot(e.target.checked)}
                   />
-                  показати всіх гравців
+                  Показати всіх гравців
                 </label>
               </div>
             </div>
@@ -320,7 +320,7 @@ export default function VisualLineupBuilder({
                       })
                     }
                   />
-                  показати всіх
+                  Показати всіх
                 </label>
                 <span className="text-muted">на</span>
                 <input

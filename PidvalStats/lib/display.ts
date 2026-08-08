@@ -21,6 +21,15 @@ export function matchStatusLabel(status: string): string {
   return MATCH_STATUS_LABELS[status] ?? status;
 }
 
+// Правильне українське закінчення для числівника + "матч"
+export function pluralMatches(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} матч`;
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${n} матчі`;
+  return `${n} матчів`;
+}
+
 // Орієнтовна фаза матчу, поки він "live" — рахуємо просто від часу кікоффа,
 // бо не ведемо окремого "поточна хвилина" вручну.
 export function matchPhase(matchDateIso: string): "first-half" | "halftime" | "second-half" | "over" {

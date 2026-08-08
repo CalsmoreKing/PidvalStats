@@ -22,7 +22,7 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-[220px] shrink-0 border-r border-white/5 bg-panel/40 backdrop-blur-sm px-6 py-8 hidden md:flex md:flex-col md:justify-between">
+    <aside className="w-[220px] shrink-0 border-r border-white/5 bg-panel/40 backdrop-blur-sm px-6 py-8 hidden md:flex md:flex-col md:justify-between sticky top-0 h-dvh overflow-y-auto">
       <div>
         {/* TODO: сюди піде логотип клубу, коли буде готовий файл */}
         <div className="mb-12 h-10" />

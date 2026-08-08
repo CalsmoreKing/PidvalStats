@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import PhotoCropEditor from "./PhotoCropEditor";
 
 type Player = {
@@ -27,6 +28,7 @@ type Edit = {
 };
 
 export default function RosterManager({ roster }: { roster: Player[] }) {
+  const router = useRouter();
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
     });
     setSavingId(null);
     setSavedId(p.id);
+    router.refresh();
   }
 
   async function uploadFile(p: Player, file: File) {
@@ -115,7 +118,7 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
                     className="w-6 text-muted hover:text-gold-bright transition-colors duration-150"
                     title="Змінити номер"
                   >
-                    {p.jersey_number ?? "—"}
+                    {val.jerseyNumber || "—"}
                   </button>
                 )}
 
@@ -136,12 +139,12 @@ export default function RosterManager({ roster }: { roster: Player[] }) {
                     className="w-40 truncate text-left text-ivory hover:text-gold-bright transition-colors duration-150"
                     title="Змінити ім'я"
                   >
-                    {p.full_name}
+                    {val.fullName}
                   </button>
                 )}
 
                 <input
-                  placeholder="прізвище (авто)"
+                  placeholder="нікнейм (авто)"
                   value={val.shortName}
                   onChange={(e) => patch(p.id, val, { shortName: e.target.value })}
                   className="w-28 bg-panel-raised rounded px-2 py-1.5 text-ivory placeholder:text-muted outline-none"
