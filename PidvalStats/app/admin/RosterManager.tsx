@@ -22,7 +22,10 @@ type Player = {
   photo_zoom?: number | null;
   is_active: boolean;
   team_id: string;
-  teams?: { slug: string; name: string } | null;
+  // Supabase без generated-типів завжди показує вкладену relation як масив
+  // на рівні TypeScript (навіть коли в базі це one-to-one через team_id) —
+  // той самий принцип, що й `competitions: {...}[]` у MatchAdminRow.tsx.
+  teams?: { slug: string; name: string }[] | null;
 };
 
 type Edit = {
@@ -461,8 +464,8 @@ function PlayerRow({
         </div>
       </div>
 
-      {!p.is_active && p.teams?.name && (
-        <div className="pl-8 mt-1 text-[10px] text-muted">була в складі: {p.teams.name}</div>
+      {!p.is_active && p.teams?.[0]?.name && (
+        <div className="pl-8 mt-1 text-[10px] text-muted">була в складі: {p.teams[0].name}</div>
       )}
 
       <div className="flex flex-wrap items-center gap-3 mt-2 pl-8">
