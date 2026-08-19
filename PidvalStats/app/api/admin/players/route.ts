@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       short_name: shortName || null,
     })
     .select(
-      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, is_active, team_id, teams(slug, name)"
+      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, is_active, team_id, teams!inner(slug, name)"
     )
     .single();
 

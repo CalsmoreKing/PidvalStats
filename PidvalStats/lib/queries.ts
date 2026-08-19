@@ -112,17 +112,18 @@ export async function getRoster(
 ) {
   const { activeOnly = true } = opts;
   const supabase = createServerSupabase();
-  let query = supabase
+  let filtered = supabase
     .from("players")
     .select(
       "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, teams!inner(slug)"
     )
-    .eq("teams.slug", teamSlug)
-    .order("jersey_number", { ascending: true, nullsFirst: false });
+    .eq("teams.slug", teamSlug);
   // За замовчуванням лише активні — конструктор складу не повинен пропонувати
-  // гравців, яких адмін вже архівував (покинули команду).
-  if (activeOnly) query = query.eq("is_active", true);
-  const { data, error } = await query;
+  // гравців, яких адмін вже архівував (покинули команду). Фільтр додається
+  // ДО .order(), щоб не переприсвоювати змінну білдера різних "стадій" типу
+  // (після .order() у Supabase-типах вже немає .eq()).
+  if (activeOnly) filtered = filtered.eq("is_active", true);
+  const { data, error } = await filtered.order("jersey_number", { ascending: true, nullsFirst: false });
   if (error) {
     console.error("getRoster", error);
     return [];
@@ -137,7 +138,7 @@ export async function getFullRoster() {
   const { data, error } = await supabase
     .from("players")
     .select(
-      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, is_active, team_id, teams(slug, name)"
+      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, is_active, team_id, teams!inner(slug, name)"
     )
     .order("jersey_number", { ascending: true, nullsFirst: false });
   if (error) {
