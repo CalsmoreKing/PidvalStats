@@ -24,7 +24,7 @@ export default async function MatchesPage() {
   let lastMonthKey = "";
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-4xl mx-auto">
       <div className="eyebrow mb-1">Календар та</div>
       <h1 className="font-display text-3xl text-ivory mb-8">Матчі</h1>
 

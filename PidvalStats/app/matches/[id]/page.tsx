@@ -75,7 +75,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
   const myVotes = match.status === "voting_open" ? await getMyVotesForMatch(match.id) : null;
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-2xl md:max-w-3xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-2xl md:max-w-4xl mx-auto">
       <div className="eyebrow mb-3">{match.competitions?.name}</div>
       <h1 className="font-display text-2xl md:text-4xl text-ivory mb-6">
         {match.is_home ? "Барселона" : match.opponent_name} —{" "}

@@ -157,7 +157,13 @@ export default function VisualLineupBuilder({
           return (
             <div
               key={def.index}
-              className="absolute -translate-x-1/2 -translate-y-1/2"
+              // z-index: кожен слот через -translate-x/y отримує власний stacking
+              // context (transform завжди створює новий), тому z-50 на самій
+              // випадаючій панелі раніше порівнювався лише "локально" й програвав
+              // сусідньому слоту, що йшов пізніше в DOM (з уже призначеним гравцем).
+              // Піднімаємо весь активний слот цілком — тоді порівняння йде на
+              // рівні сусідніх слотів, а не всередині одного з них.
+              className={`absolute -translate-x-1/2 -translate-y-1/2 ${isActive ? "z-50" : "z-0"}`}
               style={{ left: `${def.x}%`, top: `${def.y}%` }}
             >
               <button

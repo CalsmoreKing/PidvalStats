@@ -27,7 +27,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
     : null;
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-2xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-4xl mx-auto">
       {/* Заголовок профілю */}
       <div className="relative mb-8">
         <div className="relative rounded-2xl overflow-hidden bg-panel border border-white/5">
@@ -96,49 +96,53 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
           підсумованого голосування.
         </p>
       ) : (
-        <>
-          {/* Форма — останні матчі */}
-          <section className="mb-10">
-            <div className="eyebrow mb-3">Форма — крайні {pluralMatches(last5.length)}</div>
-            <div className="flex items-end gap-2 h-20 bg-panel rounded-xl px-3 pt-4 pb-2">
-              {last5.map((h: any, i: number) => {
-                const heightPct = Math.max(15, (h.avg_rating / 10) * 100);
-                const rc = ratingColor(h.avg_rating);
-                return (
-                  <a
-                    key={i}
-                    href={`/matches/${h.matches.id}`}
-                    className="flex-1 flex flex-col items-center gap-1 group"
-                    title={`${h.avg_rating.toFixed(1)} — ${h.matches.opponent_name}`}
-                  >
-                    <div
-                      className="w-full rounded-t transition-opacity duration-150 group-hover:opacity-80"
-                      style={{ height: `${heightPct}%`, background: rc.bg }}
-                    />
-                    <span className="text-[9px] text-muted font-utility">{h.avg_rating.toFixed(1)}</span>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
+        // На десктопі — дві колонки: форма/найкращі-найгірші зліва,
+        // повна історія (найдовший блок) справа, замість однієї вузької стрічки.
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:gap-8 lg:items-start">
+          <div>
+            {/* Форма — останні матчі */}
+            <section className="mb-10">
+              <div className="eyebrow mb-3">Форма — крайні {pluralMatches(last5.length)}</div>
+              <div className="flex items-end gap-2 h-20 bg-panel rounded-xl px-3 pt-4 pb-2">
+                {last5.map((h: any, i: number) => {
+                  const heightPct = Math.max(15, (h.avg_rating / 10) * 100);
+                  const rc = ratingColor(h.avg_rating);
+                  return (
+                    <a
+                      key={i}
+                      href={`/matches/${h.matches.id}`}
+                      className="flex-1 flex flex-col items-center gap-1 group"
+                      title={`${h.avg_rating.toFixed(1)} — ${h.matches.opponent_name}`}
+                    >
+                      <div
+                        className="w-full rounded-t transition-opacity duration-150 group-hover:opacity-80"
+                        style={{ height: `${heightPct}%`, background: rc.bg }}
+                      />
+                      <span className="text-[9px] text-muted font-utility">{h.avg_rating.toFixed(1)}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
 
-          {/* Найкращий / найгірший матч */}
-          <section className="grid grid-cols-2 gap-3 mb-10">
-            {best && (
-              <a href={`/matches/${best.matches.id}`} className="rounded-lg border border-gold/20 bg-panel px-3 py-3 block hover:border-gold/40 transition-colors duration-150">
-                <div className="eyebrow mb-1">Найкращий матч</div>
-                <div className="text-sm text-ivory">{best.matches.opponent_name}</div>
-                <div className="text-xs text-muted">{formatDateUk(best.matches.match_date)}</div>
-              </a>
-            )}
-            {worst && (
-              <a href={`/matches/${worst.matches.id}`} className="rounded-lg border border-white/5 bg-panel px-3 py-3 block hover:border-white/20 transition-colors duration-150">
-                <div className="eyebrow mb-1">Найслабший матч</div>
-                <div className="text-sm text-ivory">{worst.matches.opponent_name}</div>
-                <div className="text-xs text-muted">{formatDateUk(worst.matches.match_date)}</div>
-              </a>
-            )}
-          </section>
+            {/* Найкращий / найгірший матч */}
+            <section className="grid grid-cols-2 gap-3 mb-10 lg:mb-0">
+              {best && (
+                <a href={`/matches/${best.matches.id}`} className="rounded-lg border border-gold/20 bg-panel px-3 py-3 block hover:border-gold/40 transition-colors duration-150">
+                  <div className="eyebrow mb-1">Найкращий матч</div>
+                  <div className="text-sm text-ivory">{best.matches.opponent_name}</div>
+                  <div className="text-xs text-muted">{formatDateUk(best.matches.match_date)}</div>
+                </a>
+              )}
+              {worst && (
+                <a href={`/matches/${worst.matches.id}`} className="rounded-lg border border-white/5 bg-panel px-3 py-3 block hover:border-white/20 transition-colors duration-150">
+                  <div className="eyebrow mb-1">Найслабший матч</div>
+                  <div className="text-sm text-ivory">{worst.matches.opponent_name}</div>
+                  <div className="text-xs text-muted">{formatDateUk(worst.matches.match_date)}</div>
+                </a>
+              )}
+            </section>
+          </div>
 
           {/* Історія всіх матчів */}
           <section>
@@ -166,7 +170,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
               ))}
             </div>
           </section>
-        </>
+        </div>
       )}
     </div>
   );

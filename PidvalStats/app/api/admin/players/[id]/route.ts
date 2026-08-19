@@ -10,7 +10,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { photoUrl, shortName, positions, photoFocusX, photoFocusY, photoZoom, fullName, jerseyNumber } = await req.json();
+  const {
+    photoUrl,
+    shortName,
+    positions,
+    photoFocusX,
+    photoFocusY,
+    photoZoom,
+    fullName,
+    jerseyNumber,
+    teamId,
+    isActive,
+  } = await req.json();
   const supabase = createServiceClient();
 
   const patch: Record<string, unknown> = {};
@@ -22,6 +33,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (photoZoom !== undefined) patch.photo_zoom = photoZoom;
   if (fullName !== undefined) patch.full_name = fullName;
   if (jerseyNumber !== undefined) patch.jersey_number = jerseyNumber;
+  // Перетягування між командами (RosterManager) і архівація гравців, що
+  // покинули команду — статистика лишається, просто is_active = false.
+  if (teamId !== undefined) patch.team_id = teamId;
+  if (isActive !== undefined) patch.is_active = isActive;
 
   const { error } = await supabase.from("players").update(patch).eq("id", params.id);
 

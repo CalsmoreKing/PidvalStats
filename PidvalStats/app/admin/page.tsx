@@ -3,6 +3,8 @@ import {
   getAllMatches,
   getCompetitions,
   getRoster,
+  getFullRoster,
+  getAllTeams,
   getLastMatch,
   getVoters,
   getLineupForMatch,
@@ -35,16 +37,19 @@ export default async function AdminPage() {
     );
   }
 
-  const [matches, competitions, roster, lastMatch, voters, team, refereeNames, coachNames] = await Promise.all([
-    getAllMatches(),
-    getCompetitions(),
-    getRoster("first_team"),
-    getLastMatch(),
-    getVoters(),
-    getFirstTeam(),
-    getRefereeNames(),
-    getCoachNames(),
-  ]);
+  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, refereeNames, coachNames] =
+    await Promise.all([
+      getAllMatches(),
+      getCompetitions(),
+      getRoster("first_team"),
+      getFullRoster(),
+      getAllTeams(),
+      getLastMatch(),
+      getVoters(),
+      getFirstTeam(),
+      getRefereeNames(),
+      getCoachNames(),
+    ]);
 
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
 
@@ -68,7 +73,7 @@ export default async function AdminPage() {
 
   const tabs = [
     { key: "matches", label: "Матчі", content: matchesContent },
-    { key: "roster", label: "Гравці", content: <RosterManager roster={roster} /> },
+    { key: "roster", label: "Гравці", content: <RosterManager roster={fullRoster} teams={teams} /> },
     { key: "voters", label: "Фанати", content: <VotersManager voters={voters} /> },
     { key: "club", label: "Клуб", content: team && <ClubSettings team={team} /> },
   ];
@@ -77,7 +82,7 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-3xl mx-auto">
+    <div className="px-4 md:px-12 py-8 max-w-5xl mx-auto">
       <div className="eyebrow mb-1">Панель адміна · {admin.role === "owner" ? "власник" : "адмін"}</div>
       <h1 className="font-display text-3xl text-ivory mb-8">Адмінка</h1>
       <AdminTabs tabs={tabs} />

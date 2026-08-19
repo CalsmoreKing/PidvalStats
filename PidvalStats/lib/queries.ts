@@ -106,17 +106,55 @@ export async function getLineupForMatch(matchId: string) {
   return data ?? [];
 }
 
-export async function getRoster(teamSlug: "first_team" | "atletic" = "first_team") {
+export async function getRoster(
+  teamSlug: "first_team" | "atletic" = "first_team",
+  opts: { activeOnly?: boolean } = {}
+) {
+  const { activeOnly = true } = opts;
   const supabase = createServerSupabase();
-  const { data, error } = await supabase
+  let query = supabase
     .from("players")
     .select(
       "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, teams!inner(slug)"
     )
     .eq("teams.slug", teamSlug)
     .order("jersey_number", { ascending: true, nullsFirst: false });
+  // За замовчуванням лише активні — конструктор складу не повинен пропонувати
+  // гравців, яких адмін вже архівував (покинули команду).
+  if (activeOnly) query = query.eq("is_active", true);
+  const { data, error } = await query;
   if (error) {
     console.error("getRoster", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+// Усі гравці обох команд + архів — для вкладки "Гравці" в адмінці, де керуємо
+// складом команд (перетягування між командами, архівація).
+export async function getFullRoster() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("players")
+    .select(
+      "id, full_name, short_name, jersey_number, position, positions, nationality, birth_date, photo_url, photo_focus_x, photo_focus_y, photo_zoom, is_active, team_id, teams(slug, name)"
+    )
+    .order("jersey_number", { ascending: true, nullsFirst: false });
+  if (error) {
+    console.error("getFullRoster", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getAllTeams() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, slug, name")
+    .order("slug", { ascending: false }); // 'first_team' перед 'atletic'
+  if (error) {
+    console.error("getAllTeams", error);
     return [];
   }
   return data ?? [];

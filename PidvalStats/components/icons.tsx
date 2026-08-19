@@ -13,6 +13,21 @@ export function BallIcon({ className = "h-3 w-3" }: { className?: string }) {
   );
 }
 
+// Ручка для перетягування гравця між командами (RosterManager) — 2x3 крапки,
+// стандартна іконографія drag-handle, замість емодзі чи системного курсора.
+export function GripIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={className} fill="currentColor">
+      <circle cx="6" cy="4" r="1.6" />
+      <circle cx="14" cy="4" r="1.6" />
+      <circle cx="6" cy="10" r="1.6" />
+      <circle cx="14" cy="10" r="1.6" />
+      <circle cx="6" cy="16" r="1.6" />
+      <circle cx="14" cy="16" r="1.6" />
+    </svg>
+  );
+}
+
 export function BootIcon({ className = "h-3 w-3" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none">

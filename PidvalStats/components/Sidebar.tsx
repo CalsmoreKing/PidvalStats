@@ -10,7 +10,13 @@ const items = [
   { href: "/season", label: "Сезон", hint: "Таблиця" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  teamName,
+  crestUrl,
+}: {
+  teamName?: string | null;
+  crestUrl?: string | null;
+}) {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -24,8 +30,15 @@ export default function Sidebar() {
   return (
     <aside className="w-[220px] shrink-0 border-r border-white/5 bg-panel/40 backdrop-blur-sm px-6 py-8 hidden md:flex md:flex-col md:justify-between sticky top-0 h-dvh overflow-y-auto">
       <div>
-        {/* TODO: сюди піде логотип клубу, коли буде готовий файл */}
-        <div className="mb-12 h-10" />
+        <div className="mb-8 flex items-center gap-2.5 px-1">
+          {crestUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={crestUrl} alt="" className="h-8 w-8 object-contain shrink-0" />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-panel-raised shrink-0" aria-hidden />
+          )}
+          <span className="font-display text-lg text-ivory truncate">{teamName ?? "Барселона"}</span>
+        </div>
 
         <nav className="flex flex-col gap-1">
           {items.map((item) => {
@@ -73,7 +86,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div />
+      <div className="eyebrow px-1">Сезон 26/27</div>
     </aside>
   );
 }
