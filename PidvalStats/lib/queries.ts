@@ -25,9 +25,10 @@ export async function getTopMatches(limit = 3) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("matches")
-    .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions(name)")
+    .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions!inner(name, slug)")
     .eq("status", "finalized")
     .eq("is_cancelled", false)
+    .neq("competitions.slug", "friendly")
     .order("coach_rating", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) {
