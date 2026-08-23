@@ -7,14 +7,21 @@ import { ratingColor } from "@/lib/display";
 type Row = {
   id: string;
   full_name: string;
+};
+
+// "Сирі" компоненти по кожному турніру окремо — щоб можна було коректно
+// підсумувати зважений (на хвилини) рейтинг для БУДЬ-ЯКОЇ комбінації
+// обраних турнірів, а не лише для одного за раз.
+type CompRow = {
+  id: string;
+  competitionSlug: string;
   matches: number;
   goals: number;
   assists: number;
   votes: number;
-  season_rating: number | null | undefined;
+  weightedSum: number;
+  minutesSum: number;
 };
-
-type CompRow = { id: string; competitionSlug: string; matches: number; season_rating: number | null };
 
 type SortKey = "matches" | "goals" | "assists" | "votes" | "season_rating";
 
@@ -37,7 +44,58 @@ export default function SeasonTable({
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("season_rating");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [activeSlug, setActiveSlug] = useState<string | null>(null); // null = "Всі"
+
+  const allSlugs = useMemo(() => competitions.map((c) => c.slug), [competitions]);
+  // За замовчуванням — усі турніри обрані (нічого не приховано).
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(allSlugs));
+  const allChecked = allSlugs.length > 0 && allSlugs.every((s) => checked.has(s));
+
+  function toggleComp(slug: string) {
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  const namesById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of rows) m.set(r.id, r.full_name);
+    return m;
+  }, [rows]);
+
+  // Підсумовуємо обрані турніри для кожного гравця — зважений рейтинг
+  // рахується тут же, з тих самих "сирих" сум, що й в основній season_stats
+  // view, тож "усі обрано" завжди математично збігається з нею.
+  const displayRows = useMemo(() => {
+    const acc = new Map<
+      string,
+      { matches: number; goals: number; assists: number; votes: number; weightedSum: number; minutesSum: number }
+    >();
+    for (const r of byCompetition) {
+      if (!checked.has(r.competitionSlug)) continue;
+      const cur = acc.get(r.id) ?? { matches: 0, goals: 0, assists: 0, votes: 0, weightedSum: 0, minutesSum: 0 };
+      cur.matches += r.matches;
+      cur.goals += r.goals;
+      cur.assists += r.assists;
+      cur.votes += r.votes;
+      cur.weightedSum += r.weightedSum;
+      cur.minutesSum += r.minutesSum;
+      acc.set(r.id, cur);
+    }
+    return Array.from(acc.entries())
+      .map(([id, v]) => ({
+        id,
+        full_name: namesById.get(id) ?? "",
+        matches: v.matches,
+        goals: v.goals,
+        assists: v.assists,
+        votes: v.votes,
+        season_rating: v.minutesSum > 0 ? Math.round((v.weightedSum / v.minutesSum) * 10) / 10 : null,
+      }))
+      .filter((r) => r.full_name);
+  }, [byCompetition, checked, namesById]);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -47,20 +105,6 @@ export default function SeasonTable({
       setSortDir("desc");
     }
   }
-
-  const displayRows = useMemo(() => {
-    if (!activeSlug) return rows;
-    // У межах турніру показуємо тільки гравців, які в ньому грали,
-    // з їх рейтингом і матчами саме в цьому турнірі (голи/асисти/голоси —
-    // загальні за сезон, view їх окремо по турнірах не рахує).
-    return rows
-      .map((r) => {
-        const comp = byCompetition.find((c) => c.id === r.id && c.competitionSlug === activeSlug);
-        if (!comp) return null;
-        return { ...r, matches: comp.matches, season_rating: comp.season_rating };
-      })
-      .filter(Boolean) as Row[];
-  }, [rows, byCompetition, activeSlug]);
 
   const sorted = useMemo(() => {
     const copy = [...displayRows];
@@ -76,28 +120,32 @@ export default function SeasonTable({
     <div>
       <div className="flex gap-2 mb-8 flex-wrap">
         <button
-          onClick={() => setActiveSlug(null)}
+          onClick={() => setChecked(new Set(allSlugs))}
           className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
-            activeSlug === null
+            allChecked
               ? "bg-panel-raised border-gold/40 text-gold-bright"
               : "border-white/10 text-muted hover:border-white/25"
           }`}
+          title="Обрати всі турніри"
         >
           Всі
         </button>
-        {competitions.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setActiveSlug(c.slug)}
-            className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
-              activeSlug === c.slug
-                ? "bg-panel-raised border-gold/40 text-gold-bright"
-                : "border-white/10 text-muted hover:border-white/25"
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
+        {competitions.map((c) => {
+          const on = checked.has(c.slug);
+          return (
+            <button
+              key={c.id}
+              onClick={() => toggleComp(c.slug)}
+              className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
+                on
+                  ? "bg-panel-raised border-gold/40 text-gold-bright"
+                  : "border-white/10 text-muted hover:border-white/25"
+              }`}
+            >
+              {c.name}
+            </button>
+          );
+        })}
       </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
@@ -122,7 +170,7 @@ export default function SeasonTable({
             {sorted.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-5 py-6 text-center text-muted">
-                  Немає даних для цього турніру.
+                  {checked.size === 0 ? "Обери хоча б один турнір." : "Немає даних для обраних турнірів."}
                 </td>
               </tr>
             )}

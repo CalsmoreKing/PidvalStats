@@ -14,7 +14,7 @@ export async function GET() {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("voters")
-    .select("display_name, telegram_username, avatar_url, custom_display_name, custom_avatar_url")
+    .select("id, display_name, telegram_username, avatar_url, custom_display_name, custom_avatar_url")
     .eq("id", voterId)
     .maybeSingle();
 
@@ -26,6 +26,7 @@ export async function GET() {
 
   return NextResponse.json({
     voter: {
+      id: data.id,
       displayName: data.custom_display_name || data.display_name,
       username: data.telegram_username,
       avatarUrl: data.custom_avatar_url || data.avatar_url,

@@ -8,6 +8,7 @@ const items = [
   { href: "/", label: "Головна", hint: "Камп Ноу" },
   { href: "/matches", label: "Матчі", hint: "Календар" },
   { href: "/season", label: "Сезон", hint: "Таблиця" },
+  { href: "/voters", label: "Фанати", hint: "Хто як голосує" },
 ];
 
 export default function Sidebar({
@@ -86,7 +87,7 @@ export default function Sidebar({
         </nav>
       </div>
 
-      <div className="eyebrow px-1">Сезон 26/27</div>
+      <div />
     </aside>
   );
 }

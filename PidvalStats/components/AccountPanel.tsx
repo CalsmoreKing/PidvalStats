@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import BotLoginButton from "@/components/BotLoginButton";
 
 type Voter = {
+  id: string;
   displayName: string | null;
   username: string | null;
   avatarUrl: string | null;
@@ -90,6 +91,9 @@ export default function AccountPanel() {
             >
               <div className="text-xs text-ivory">{voter.displayName}</div>
               {voter.username && <div className="text-[10px] text-muted -mt-1">@{voter.username}</div>}
+              <Link href={`/voters/${voter.id}`} className="text-[11px] text-muted hover:text-gold-bright">
+                Мої голоси
+              </Link>
               <Link href="/settings" className="text-[11px] text-muted hover:text-gold-bright">
                 Профіль
               </Link>

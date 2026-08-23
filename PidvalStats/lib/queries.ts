@@ -25,10 +25,9 @@ export async function getTopMatches(limit = 3) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("matches")
-    .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions!inner(name, slug)")
+    .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions(name)")
     .eq("status", "finalized")
     .eq("is_cancelled", false)
-    .neq("competitions.slug", "friendly")
     .order("coach_rating", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) {
@@ -322,6 +321,54 @@ export async function getCompetitions() {
     .order("sort_order");
   if (error) {
     console.error("getCompetitions", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+// ---------------------------------------------------------------------
+// ПРОФІЛЬ ФАНАТА — публічна історія голосів (тільки завершені матчі, щоб
+// не показувати "живі" голоси до підрахунку — це вплинуло б на інших).
+// ---------------------------------------------------------------------
+
+export async function getVoterProfile(voterId: string) {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("voters")
+    .select("id, display_name, telegram_username, avatar_url, custom_display_name, custom_avatar_url")
+    .eq("id", voterId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    displayName: data.custom_display_name || data.display_name || data.telegram_username || "Фанат",
+    avatarUrl: data.custom_avatar_url || data.avatar_url,
+  };
+}
+
+export async function getVoterVoteHistory(voterId: string) {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("voter_vote_history")
+    .select("*")
+    .eq("voter_id", voterId)
+    .order("match_date", { ascending: false });
+  if (error) {
+    console.error("getVoterVoteHistory", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getVoterActivity() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("voter_activity")
+    .select("*")
+    .order("matches_voted", { ascending: false })
+    .limit(50);
+  if (error) {
+    console.error("getVoterActivity", error);
     return [];
   }
   return data ?? [];

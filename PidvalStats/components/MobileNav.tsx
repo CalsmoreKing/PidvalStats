@@ -7,6 +7,7 @@ const items = [
   { href: "/", label: "Камп Ноу" },
   { href: "/matches", label: "Матчі" },
   { href: "/season", label: "Сезон" },
+  { href: "/voters", label: "Фанати" },
 ];
 
 export function MobileTopBar() {

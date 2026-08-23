@@ -29,8 +29,12 @@ export default async function SeasonPage() {
     .map((r: any) => ({
       id: r.player_id,
       competitionSlug: r.competition_slug,
-      matches: r.matches_played,
-      season_rating: r.avg_rating,
+      matches: r.matches_rated ?? 0,
+      goals: r.total_goals ?? 0,
+      assists: r.total_assists ?? 0,
+      votes: r.total_votes ?? 0,
+      weightedSum: r.rating_weighted_sum ?? 0,
+      minutesSum: r.minutes_sum ?? 0,
     }));
 
   return (
