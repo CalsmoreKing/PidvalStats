@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
 import VotingCountdown from "@/components/VotingCountdown";
+import VotingOpensCountdown from "@/components/VotingOpensCountdown";
 import { getMatchById, getLineupForMatch, getMyVotesForMatch } from "@/lib/queries";
 import { resolvePitchPositions } from "@/lib/formation";
 import { matchStatusLabel } from "@/lib/display";
@@ -120,10 +121,23 @@ export default async function MatchDetailPage({ params }: { params: { id: string
         <FormationPitch coach={match.coach_name} coachRating={match.coach_rating} lineup={pitchSlots} subs={subs} />
       )}
 
+      {(match.status === "scheduled" || match.status === "live" || match.status === "finished") &&
+        match.voting_opens_at && (
+          <div className="mt-10">
+            <VotingOpensCountdown opensAt={match.voting_opens_at} />
+          </div>
+        )}
+
       {match.status === "voting_open" && votablePlayers.length > 0 && (
         <div className="mt-10">
           <h2 className="font-display text-xl text-ivory mb-4">Голосування</h2>
-          <VotingForm matchId={match.id} players={votablePlayers} initialVotes={myVotes} />
+          <VotingForm
+            matchId={match.id}
+            players={votablePlayers}
+            coach={match.coach_name ? { name: match.coach_name, photoUrl: match.coaches?.photo_url } : null}
+            referee={match.referee ? { name: match.referee, photoUrl: match.referees?.photo_url } : null}
+            initialVotes={myVotes}
+          />
         </div>
       )}
     </div>

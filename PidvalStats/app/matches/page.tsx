@@ -55,9 +55,9 @@ export default async function MatchesPage() {
                   href={`/matches/${m.id}`}
                   className={`relative block rounded-xl border-2 px-4 py-4 transition-all duration-200 ${phaseBorder(m)}`}
                 >
-                  {m.coach_rating != null && !m.is_cancelled && (
+                  {m.match_rating != null && !m.is_cancelled && (
                     <div className="rating-star absolute -top-2 -right-2 h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
-                      {m.coach_rating.toFixed(1)}
+                      {m.match_rating.toFixed(1)}
                     </div>
                   )}
 

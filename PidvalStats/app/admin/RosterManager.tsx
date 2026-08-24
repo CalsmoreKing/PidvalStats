@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PhotoCropEditor from "./PhotoCropEditor";
 import { GripIcon } from "@/components/icons";
@@ -56,6 +56,16 @@ function getVal(p: Player, edits: Record<string, Edit>): Edit {
 
 export default function RosterManager({ roster, teams }: { roster: Player[]; teams: Team[] }) {
   const router = useRouter();
+  // Локальна копія — переміщення між командами/архівом застосовується сюди
+  // МИТТЄВО (оптимістично), а не чекає відповіді сервера й router.refresh().
+  // Раніше через цю затримку сортування "стрибало" вже ПІСЛЯ дропу, що
+  // виглядало як лаг. Коли сервер підтвердить і роутер оновить `roster`,
+  // ефект нижче тихо синхронізує локальну копію (без видимої зміни, бо
+  // значення вже й так збігаються).
+  const [localRoster, setLocalRoster] = useState(roster);
+  useEffect(() => {
+    setLocalRoster(roster);
+  }, [roster]);
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -118,6 +128,16 @@ export default function RosterManager({ roster, teams }: { roster: Player[]; tea
     if (target.archive) {
       body.isActive = false;
     }
+    // Оптимістично — переносимо гравця в потрібну колонку МИТТЄВО, не чекаючи
+    // мережі. PATCH іде у фоні; коли router.refresh() підтягне свіжі дані,
+    // ефект вище тихо синхронізує (значення вже збігаються, змін не видно).
+    setLocalRoster((cur) =>
+      cur.map((r) =>
+        r.id === p.id
+          ? { ...r, team_id: target.teamId ?? r.team_id, is_active: target.archive ? false : true }
+          : r
+      )
+    );
     await fetch(`/api/admin/players/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -154,14 +174,14 @@ export default function RosterManager({ roster, teams }: { roster: Player[]; tea
       const id = draggedId;
       setDraggedId(null);
       if (!id) return;
-      const player = roster.find((r) => r.id === id);
+      const player = localRoster.find((r) => r.id === id);
       if (!player) return;
       moveTo(player, target);
     };
   }
 
-  const activePlayers = roster.filter((p) => p.is_active);
-  const archivedPlayers = roster.filter((p) => !p.is_active);
+  const activePlayers = localRoster.filter((p) => p.is_active);
+  const archivedPlayers = localRoster.filter((p) => !p.is_active);
   const byTeam = (teamId: string) => activePlayers.filter((p) => p.team_id === teamId);
 
   const rowProps = {

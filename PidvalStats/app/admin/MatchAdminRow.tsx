@@ -78,6 +78,9 @@ export default function MatchAdminRow({
   const [matchDate, setMatchDate] = useState(
     match.match_date ? new Date(match.match_date).toISOString().slice(0, 16) : ""
   );
+  const [votingOpensAt, setVotingOpensAt] = useState(
+    match.voting_opens_at ? new Date(match.voting_opens_at).toISOString().slice(0, 16) : ""
+  );
 
   const [savingLineup, setSavingLineup] = useState(false);
   const [savingScore, setSavingScore] = useState(false);
@@ -194,6 +197,7 @@ export default function MatchAdminRow({
         coachRating: coachRatingOverride === "" ? null : Number(coachRatingOverride),
         competitionId,
         matchDate: matchDate ? new Date(matchDate).toISOString() : match.match_date,
+        votingOpensAt: votingOpensAt ? new Date(votingOpensAt).toISOString() : null,
       }),
     });
     setSavingDetails(false);
@@ -320,6 +324,17 @@ export default function MatchAdminRow({
               onChange={(e) => setMatchDate(e.target.value)}
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
             />
+            <div className="flex flex-col gap-1">
+              <input
+                type="datetime-local"
+                value={votingOpensAt}
+                onChange={(e) => setVotingOpensAt(e.target.value)}
+                className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory outline-none"
+              />
+              <span className="text-[10px] text-muted px-1">
+                Орієнтовний час відкриття голосування (таймер на сторінці матчу) — необов'язково
+              </span>
+            </div>
             <select
               value={competitionId}
               onChange={(e) => setCompetitionId(e.target.value)}

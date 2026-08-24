@@ -71,6 +71,7 @@ export default function VisualLineupBuilder({
 }) {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [showAllForSlot, setShowAllForSlot] = useState(false);
+  const [slotSearch, setSlotSearch] = useState("");
   const [showAllForSub, setShowAllForSub] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
@@ -106,11 +107,21 @@ export default function VisualLineupBuilder({
   const playerById = (id: string) => roster.find((p) => p.id === id);
 
   function playersForSlot(def: (typeof FORMATION_SLOTS)[number]) {
+    const eligible = (pool: typeof roster) =>
+      pool.filter((p) => !usedIds.has(p.id) || p.id === slotAssignments[def.index]);
+
+    // Якщо щось введено в пошук — шукаємо серед УСІХ вільних гравців, а не
+    // лише за позицією: якщо друкуєш ім'я, значить точно знаєш кого шукати.
+    const q = slotSearch.trim().toLowerCase();
+    if (q) {
+      return eligible(roster).filter((p) => p.full_name.toLowerCase().includes(q));
+    }
+
     const filtered = roster.filter(
       (p) => p.position === def.label || p.positions?.includes(def.label)
     );
     const pool = showAllForSlot || filtered.length === 0 ? roster : filtered;
-    return pool.filter((p) => !usedIds.has(p.id) || p.id === slotAssignments[def.index]);
+    return eligible(pool);
   }
 
   // Автоматично рахуємо пару "хто вийшов / хто зайшов" при зміні хвилини заміни
@@ -170,6 +181,7 @@ export default function VisualLineupBuilder({
                 onClick={() => {
                   setActiveSlot(isActive ? null : def.index);
                   setShowAllForSlot(false);
+                  setSlotSearch("");
                 }}
               >
                 {player ? (
@@ -203,6 +215,16 @@ export default function VisualLineupBuilder({
                 }`}
                 style={{ backgroundColor: "#0F0A1C" }}
               >
+                <div className="px-2 pt-2 pb-1">
+                  <input
+                    type="text"
+                    value={slotSearch}
+                    onChange={(e) => setSlotSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Пошук за іменем…"
+                    className="w-full bg-panel-raised rounded px-2 py-1 text-[11px] text-ivory placeholder:text-muted outline-none"
+                  />
+                </div>
                 <div className="max-h-48 overflow-y-auto py-1">
                   {player && (
                     <button
@@ -222,7 +244,9 @@ export default function VisualLineupBuilder({
                     </button>
                   ))}
                   {playersForSlot(def).length === 0 && (
-                    <div className="px-3 py-1.5 text-[11px] text-muted">Нікого вільного на цю позицію</div>
+                    <div className="px-3 py-1.5 text-[11px] text-muted">
+                      {slotSearch.trim() ? "Нічого не знайдено" : "Нікого вільного на цю позицію"}
+                    </div>
                   )}
                 </div>
                 <label className="flex items-center gap-1.5 px-3 py-1.5 border-t border-white/5 text-[10px] text-muted">

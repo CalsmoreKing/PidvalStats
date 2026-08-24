@@ -156,23 +156,89 @@ function RateButton({
   );
 }
 
+function StaffVotePoster({
+  label,
+  name,
+  photoUrl,
+  rating,
+  onRate,
+  readOnly,
+}: {
+  label: string;
+  name: string;
+  photoUrl?: string | null;
+  rating: number | undefined;
+  onRate: (n: number) => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <div className="relative aspect-[2/1] rounded-2xl overflow-hidden border border-white/5 bg-panel">
+      <div className="relative h-full flex items-stretch">
+        <div className="w-[36%] shrink-0 h-full flex items-end justify-center bg-panel-raised/40">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={name} className="max-h-full w-auto object-contain object-bottom" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center">
+              <span className="font-display text-3xl text-ivory/20">{name[0]}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center px-3 py-2 gap-1">
+          <div className="text-xs text-ivory truncate mb-0.5">
+            <span className="eyebrow mr-1.5">{label}</span>
+            {name}
+          </div>
+          <div className="flex flex-col gap-1 mt-0.5">
+            <div className="grid grid-cols-5 gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {[6, 7, 8, 9, 10].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VotingForm({
   matchId,
   players,
+  coach,
+  referee,
   initialVotes,
 }: {
   matchId: string;
   players: VotablePlayer[];
-  initialVotes?: { ratings: Record<string, number>; mvpPlayerId: string | null } | null;
+  coach?: { name: string; photoUrl?: string | null } | null;
+  referee?: { name: string; photoUrl?: string | null } | null;
+  initialVotes?: {
+    ratings: Record<string, number>;
+    mvpPlayerId: string | null;
+    coachRating?: number | null;
+    refereeRating?: number | null;
+  } | null;
 }) {
   const [ratings, setRatings] = useState<Record<string, number>>(initialVotes?.ratings ?? {});
   const [mvpPlayerId, setMvpPlayerId] = useState<string | null>(initialVotes?.mvpPlayerId ?? null);
+  const [coachRating, setCoachRating] = useState<number | undefined>(initialVotes?.coachRating ?? undefined);
+  const [refereeRating, setRefereeRating] = useState<number | undefined>(initialVotes?.refereeRating ?? undefined);
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">(
     initialVotes ? "done" : "idle"
   );
   const [errorMsg, setErrorMsg] = useState("");
 
-  const allRated = players.every((p) => ratings[p.playerId] != null);
+  const allRated =
+    players.every((p) => ratings[p.playerId] != null) &&
+    (!coach || coachRating != null) &&
+    (!referee || refereeRating != null);
   const readOnly = status === "done";
 
   async function submit() {
@@ -186,6 +252,8 @@ export default function VotingForm({
           matchId,
           ratings: players.map((p) => ({ playerId: p.playerId, rating: ratings[p.playerId] })),
           mvpPlayerId,
+          coachRating: coachRating ?? null,
+          refereeRating: refereeRating ?? null,
         }),
       });
       const data = await res.json();
@@ -225,6 +293,34 @@ export default function VotingForm({
           />
         ))}
       </div>
+
+      {(coach || referee) && (
+        <>
+          <div className="eyebrow mt-2">Тренер і суддя</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {coach && (
+              <StaffVotePoster
+                label="Тренер"
+                name={coach.name}
+                photoUrl={coach.photoUrl}
+                rating={coachRating}
+                onRate={(n) => !readOnly && setCoachRating(n)}
+                readOnly={readOnly}
+              />
+            )}
+            {referee && (
+              <StaffVotePoster
+                label="Суддя"
+                name={referee.name}
+                photoUrl={referee.photoUrl}
+                rating={refereeRating}
+                onRate={(n) => !readOnly && setRefereeRating(n)}
+                readOnly={readOnly}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}
 

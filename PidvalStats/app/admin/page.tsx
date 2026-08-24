@@ -11,6 +11,8 @@ import {
   getFirstTeam,
   getRefereeNames,
   getCoachNames,
+  getReferees,
+  getCoaches,
 } from "@/lib/queries";
 import CreateMatchForm from "./CreateMatchForm";
 import MatchAdminRow from "./MatchAdminRow";
@@ -18,6 +20,7 @@ import AdminsManager from "./AdminsManager";
 import RosterManager from "./RosterManager";
 import VotersManager from "./VotersManager";
 import ClubSettings from "./ClubSettings";
+import StaffManager from "./StaffManager";
 import AdminTabs from "./AdminTabs";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +40,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, refereeNames, coachNames] =
+  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, refereeNames, coachNames, referees, coaches] =
     await Promise.all([
       getAllMatches(),
       getCompetitions(),
@@ -49,6 +52,8 @@ export default async function AdminPage() {
       getFirstTeam(),
       getRefereeNames(),
       getCoachNames(),
+      getReferees(),
+      getCoaches(),
     ]);
 
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
@@ -76,6 +81,7 @@ export default async function AdminPage() {
     { key: "roster", label: "Гравці", content: <RosterManager roster={fullRoster} teams={teams} /> },
     { key: "voters", label: "Фанати", content: <VotersManager voters={voters} /> },
     { key: "club", label: "Клуб", content: team && <ClubSettings team={team} /> },
+    { key: "staff", label: "Персонал", content: <StaffManager referees={referees} coaches={coaches} /> },
   ];
   if (admin.role === "owner") {
     tabs.push({ key: "admins", label: "Адміни", content: <AdminsManager /> });

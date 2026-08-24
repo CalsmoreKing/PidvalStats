@@ -10,8 +10,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { homeScore, awayScore, venue, referee, refereeRating, coachName, coachRating, matchDate, competitionId, isCancelled } =
-    await req.json();
+  const {
+    homeScore,
+    awayScore,
+    venue,
+    referee,
+    refereeRating,
+    coachName,
+    coachRating,
+    matchDate,
+    competitionId,
+    isCancelled,
+    votingOpensAt,
+  } = await req.json();
   const supabase = createServiceClient();
 
   const patch: Record<string, unknown> = {};
@@ -23,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (matchDate !== undefined) patch.match_date = matchDate;
   if (competitionId !== undefined) patch.competition_id = competitionId;
   if (isCancelled !== undefined) patch.is_cancelled = isCancelled;
+  if (votingOpensAt !== undefined) patch.voting_opens_at = votingOpensAt || null;
 
   // Рефері/тренер: шукаємо за іменем у довіднику (щоб однакове ім'я не
   // плодило дублі в підсумкових таблицях), створюємо, якщо ще нема.

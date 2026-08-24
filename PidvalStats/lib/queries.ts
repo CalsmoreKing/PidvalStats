@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 async function getFirstTeamId(supabase: ReturnType<typeof createServerSupabase>) {
   const { data } = await supabase.from("teams").select("id").eq("slug", "first_team").single();
@@ -25,10 +26,10 @@ export async function getTopMatches(limit = 3) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("matches")
-    .select("id, opponent_name, is_home, home_score, away_score, coach_rating, competitions(name)")
+    .select("id, opponent_name, is_home, home_score, away_score, match_rating, competitions(name)")
     .eq("status", "finalized")
     .eq("is_cancelled", false)
-    .order("coach_rating", { ascending: false, nullsFirst: false })
+    .order("match_rating", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) {
     console.error("getTopMatches", error);
@@ -67,7 +68,7 @@ export async function getAllMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, coach_rating, voting_closes_at, venue, referee, coach_name, competition_id, competitions(name)"
+      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, match_rating, voting_closes_at, voting_opens_at, venue, referee, coach_name, competition_id, competitions(name)"
     )
     .order("match_date", { ascending: false });
   if (error) {
@@ -81,7 +82,7 @@ export async function getMatchById(id: string) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("matches")
-    .select("*, competitions(name)")
+    .select("*, competitions(name), referees(photo_url), coaches(photo_url)")
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -233,15 +234,19 @@ export async function getMyVotesForMatch(matchId: string) {
   if (!voterId) return null;
 
   const supabase = createServiceClient();
-  const [{ data: votes }, { data: mvp }] = await Promise.all([
+  const [{ data: votes }, { data: mvp }, { data: coachVote }, { data: refVote }] = await Promise.all([
     supabase.from("votes").select("player_id, rating").eq("match_id", matchId).eq("voter_id", voterId),
     supabase.from("mvp_votes").select("player_id").eq("match_id", matchId).eq("voter_id", voterId).maybeSingle(),
+    supabase.from("coach_votes").select("rating").eq("match_id", matchId).eq("voter_id", voterId).maybeSingle(),
+    supabase.from("referee_votes").select("rating").eq("match_id", matchId).eq("voter_id", voterId).maybeSingle(),
   ]);
 
   if (!votes || votes.length === 0) return null;
   return {
     ratings: Object.fromEntries(votes.map((v) => [v.player_id, v.rating])) as Record<string, number>,
     mvpPlayerId: mvp?.player_id ?? null,
+    coachRating: coachVote?.rating ?? null,
+    refereeRating: refVote?.rating ?? null,
   };
 }
 
@@ -313,6 +318,26 @@ export async function getFirstTeam() {
   return data ?? null;
 }
 
+export async function getReferees() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase.from("referees").select("id, name, photo_url").order("name");
+  if (error) {
+    console.error("getReferees", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getCoaches() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase.from("coaches").select("id, name, photo_url").order("name");
+  if (error) {
+    console.error("getCoaches", error);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getCompetitions() {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
@@ -332,7 +357,14 @@ export async function getCompetitions() {
 // ---------------------------------------------------------------------
 
 export async function getVoterProfile(voterId: string) {
-  const supabase = createServerSupabase();
+  // ВАЖЛИВО: анонімний клієнт тут не підходить — RLS на voters дозволяє
+  // читати лише "свій" рядок через auth.jwt()->>'voter_id', а цей проєкт
+  // не використовує Supabase Auth (логін через Telegram-бота й власну
+  // cookie-сесію), тому auth.jwt() завжди порожній і жоден рядок ніколи
+  // не пройде цю умову — профіль будь-кого (і свій власний) завжди
+  // повертав би 404. Це навмисно публічна сторінка, тому службовий ключ
+  // тут доречний — так само, як getVoters() в адмінці.
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("voters")
     .select("id, display_name, telegram_username, avatar_url, custom_display_name, custom_avatar_url")

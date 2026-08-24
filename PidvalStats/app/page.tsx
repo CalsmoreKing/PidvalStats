@@ -64,9 +64,9 @@ export default async function CampNouPage() {
                   </div>
                   <div
                     className="rating-star h-9 w-9 flex items-center justify-center font-utility text-[11px] font-bold"
-                    style={m.coach_rating != null ? { background: ratingColor(m.coach_rating).bg, color: ratingColor(m.coach_rating).text } : undefined}
+                    style={m.match_rating != null ? { background: ratingColor(m.match_rating).bg, color: ratingColor(m.match_rating).text } : undefined}
                   >
-                    {m.coach_rating?.toFixed(1)}
+                    {m.match_rating?.toFixed(1)}
                   </div>
                 </div>
               ))}

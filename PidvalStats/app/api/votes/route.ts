@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Увійдіть через Telegram, щоб голосувати" }, { status: 401 });
   }
 
-  const { matchId, ratings, mvpPlayerId } = await req.json();
+  const { matchId, ratings, mvpPlayerId, coachRating, refereeRating } = await req.json();
 
   if (!matchId || !Array.isArray(ratings) || ratings.length === 0) {
     return NextResponse.json({ error: "Некоректні дані голосу" }, { status: 400 });
@@ -20,6 +20,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Некоректна оцінка" }, { status: 400 });
     }
   }
+  if (coachRating !== undefined && coachRating !== null) {
+    if (!Number.isInteger(coachRating) || coachRating < 1 || coachRating > 10) {
+      return NextResponse.json({ error: "Некоректна оцінка тренера" }, { status: 400 });
+    }
+  }
+  if (refereeRating !== undefined && refereeRating !== null) {
+    if (!Number.isInteger(refereeRating) || refereeRating < 1 || refereeRating > 10) {
+      return NextResponse.json({ error: "Некоректна оцінка судді" }, { status: 400 });
+    }
+  }
 
   const supabase = createServiceClient();
 
@@ -27,7 +37,7 @@ export async function POST(req: NextRequest) {
   // цю перевірку раніше робив RLS, тепер робимо тут явно.
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("status, voting_closes_at")
+    .select("status, voting_closes_at, coach_id, referee_id")
     .eq("id", matchId)
     .maybeSingle();
 
@@ -64,6 +74,26 @@ export async function POST(req: NextRequest) {
     if (mvpError && mvpError.code !== "23505") {
       return NextResponse.json({ ok: true, mvpWarning: "MVP-голос не зарахувався" });
     }
+  }
+
+  // Тренер і суддя — окремі невеликі таблиці голосів (той самий принцип, що
+  // й votes), не блокують основний голос за гравців, якщо матч чомусь без
+  // призначеного тренера/судді (coach_id/referee_id null).
+  if (coachRating != null && match.coach_id) {
+    await supabase.from("coach_votes").insert({
+      match_id: matchId,
+      voter_id: voterId,
+      coach_id: match.coach_id,
+      rating: coachRating,
+    });
+  }
+  if (refereeRating != null && match.referee_id) {
+    await supabase.from("referee_votes").insert({
+      match_id: matchId,
+      voter_id: voterId,
+      referee_id: match.referee_id,
+      rating: refereeRating,
+    });
   }
 
   return NextResponse.json({ ok: true });
