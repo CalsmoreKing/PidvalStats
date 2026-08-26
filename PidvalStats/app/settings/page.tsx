@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [username, setUsername] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [showRatings, setShowRatings] = useState(true);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [uploading, setUploading] = useState(false);
   const [top, setTop] = useState<StatPlayer[]>([]);
@@ -34,6 +35,7 @@ export default function SettingsPage() {
           setUsername(d.voter.username);
           setDisplayName(d.voter.displayName ?? "");
           setAvatarUrl(d.voter.avatarUrl ?? "");
+          setShowRatings(d.voter.showRatings ?? true);
         }
         setLoading(false);
       });
@@ -46,12 +48,16 @@ export default function SettingsPage() {
       });
   }, []);
 
-  async function save(overrideAvatar?: string) {
+  async function save(overrideAvatar?: string, overrideShowRatings?: boolean) {
     setStatus("saving");
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, avatarUrl: overrideAvatar ?? avatarUrl }),
+      body: JSON.stringify({
+        displayName,
+        avatarUrl: overrideAvatar ?? avatarUrl,
+        showRatings: overrideShowRatings ?? showRatings,
+      }),
     });
     setStatus(res.ok ? "saved" : "error");
   }
@@ -113,6 +119,19 @@ export default function SettingsPage() {
             />
           </label>
         </div>
+
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showRatings}
+            onChange={(e) => {
+              setShowRatings(e.target.checked);
+              save(undefined, e.target.checked);
+            }}
+            className="accent-gold"
+          />
+          Показувати мої оцінки іншим на моєму профілі
+        </label>
 
         <button
           onClick={() => save()}

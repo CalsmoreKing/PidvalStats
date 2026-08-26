@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       coach_name: coachName || null,
       coach_id: coachId,
       status: "scheduled",
+      voting_opens_at: suggestedVotingOpensAt.toISOString(),
     })
     .select()
     .single();

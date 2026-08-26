@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { getPlayerProfile } from "@/lib/queries";
 import { calcAge } from "@/lib/age";
 import { flagUrl } from "@/lib/flags";
-import { ratingColor, pluralMatches } from "@/lib/display";
-
+import { ratingColor } from "@/lib/display";
+import FormChart from "@/components/FormChart";
 export const dynamic = "force-dynamic";
 
 function formatDateUk(iso: string) {
@@ -100,43 +100,46 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
         // повна історія (найдовший блок) справа, замість однієї вузької стрічки.
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:gap-8 lg:items-start">
           <div>
-            {/* Форма — останні матчі */}
+            {/* Форма — останні матчі, лінія замість стовпчиків */}
             <section className="mb-10">
-              <div className="eyebrow mb-3">Форма — крайні {pluralMatches(last5.length)}</div>
-              <div className="flex items-end gap-2 h-20 bg-panel rounded-xl px-3 pt-4 pb-2">
-                {last5.map((h: any, i: number) => {
-                  const heightPct = Math.max(15, (h.avg_rating / 10) * 100);
-                  const rc = ratingColor(h.avg_rating);
-                  return (
-                    <a
-                      key={i}
-                      href={`/matches/${h.matches.id}`}
-                      className="flex-1 flex flex-col items-center gap-1 group"
-                      title={`${h.avg_rating.toFixed(1)} — ${h.matches.opponent_name}`}
-                    >
-                      <div
-                        className="w-full rounded-t transition-opacity duration-150 group-hover:opacity-80"
-                        style={{ height: `${heightPct}%`, background: rc.bg }}
-                      />
-                      <span className="text-[9px] text-muted font-utility">{h.avg_rating.toFixed(1)}</span>
-                    </a>
-                  );
-                })}
-              </div>
+              <div className="eyebrow mb-3">Форма</div>
+              <FormChart
+                points={last5.map((h: any) => ({
+                  matchId: h.matches.id,
+                  rating: h.avg_rating,
+                  opponentName: h.matches.opponent_name,
+                }))}
+              />
             </section>
 
             {/* Найкращий / найгірший матч */}
             <section className="grid grid-cols-2 gap-3 mb-10 lg:mb-0">
               {best && (
                 <a href={`/matches/${best.matches.id}`} className="rounded-lg border border-gold/20 bg-panel px-3 py-3 block hover:border-gold/40 transition-colors duration-150">
-                  <div className="eyebrow mb-1">Найкращий матч</div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="eyebrow">Найкращий матч</div>
+                    <div
+                      className="rating-star h-6 w-6 shrink-0 flex items-center justify-center font-utility text-[10px] font-bold"
+                      style={{ background: ratingColor(best.avg_rating).bg, color: ratingColor(best.avg_rating).text }}
+                    >
+                      {best.avg_rating.toFixed(1)}
+                    </div>
+                  </div>
                   <div className="text-sm text-ivory">{best.matches.opponent_name}</div>
                   <div className="text-xs text-muted">{formatDateUk(best.matches.match_date)}</div>
                 </a>
               )}
               {worst && (
                 <a href={`/matches/${worst.matches.id}`} className="rounded-lg border border-white/5 bg-panel px-3 py-3 block hover:border-white/20 transition-colors duration-150">
-                  <div className="eyebrow mb-1">Найслабший матч</div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="eyebrow">Найслабший матч</div>
+                    <div
+                      className="rating-star h-6 w-6 shrink-0 flex items-center justify-center font-utility text-[10px] font-bold"
+                      style={{ background: ratingColor(worst.avg_rating).bg, color: ratingColor(worst.avg_rating).text }}
+                    >
+                      {worst.avg_rating.toFixed(1)}
+                    </div>
+                  </div>
                   <div className="text-sm text-ivory">{worst.matches.opponent_name}</div>
                   <div className="text-xs text-muted">{formatDateUk(worst.matches.match_date)}</div>
                 </a>

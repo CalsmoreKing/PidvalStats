@@ -12,7 +12,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   const supabase = createServiceClient();
   const now = new Date();
-  const closesAt = new Date(now.getTime() + 15 * 60_000);
+  const closesAt = new Date(now.getTime() + 30 * 60_000);
 
   const { error } = await supabase
     .from("matches")

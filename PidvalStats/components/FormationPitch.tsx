@@ -22,6 +22,7 @@ type Slot = {
   redCards?: number;
   subOutMinute?: number | null;
   subInMinute?: number | null;
+  penaltyGoals?: number;
 };
 
 function EventIcons({ slot }: { slot: Slot }) {
@@ -39,6 +40,11 @@ function EventIcons({ slot }: { slot: Slot }) {
       {Array.from({ length: Math.min(slot.goals ?? 0, 4) }).map((_, i) => (
         <BallIcon key={`g${i}`} className="h-3 w-3" />
       ))}
+      {(slot.penaltyGoals ?? 0) > 0 && (
+        <span className="text-[8px] text-muted leading-none" title="У т.ч. з пенальті">
+          (пен. {slot.penaltyGoals})
+        </span>
+      )}
       {Array.from({ length: Math.min(slot.assists ?? 0, 4) }).map((_, i) => (
         <BootIcon key={`a${i}`} className="h-3 w-3" />
       ))}
@@ -125,51 +131,94 @@ function PitchToken({ slot }: { slot: Slot }) {
   );
 }
 
+function StaffCard({
+  label,
+  name,
+  rating,
+  photoUrl,
+}: {
+  label: string;
+  name: string | null;
+  rating?: number | null;
+  photoUrl?: string | null;
+}) {
+  const rc = rating != null ? ratingColor(rating) : null;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-panel px-3 py-2.5 lg:flex-col lg:text-center lg:py-4">
+      <div className="h-12 w-12 lg:h-16 lg:w-16 rounded-full overflow-hidden bg-panel-raised shrink-0 relative">
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-ivory/30 font-display">
+            {(name ?? "?")[0]}
+          </div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <div className="eyebrow mb-0.5">{label}</div>
+        <div className="text-sm text-ivory truncate">{name ?? "—"}</div>
+        {rating != null && (
+          <span
+            className="rating-star inline-flex h-6 w-6 items-center justify-center font-utility text-[9px] font-bold mt-1"
+            style={rc ? { background: rc.bg, color: rc.text } : undefined}
+          >
+            {rating.toFixed(1)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function FormationPitch({
   coach,
   coachRating,
+  coachPhotoUrl,
+  referee,
+  refereeRating,
+  refereePhotoUrl,
   lineup,
   subs,
 }: {
   coach: string | null;
   coachRating?: number | null;
+  coachPhotoUrl?: string | null;
+  referee?: string | null;
+  refereeRating?: number | null;
+  refereePhotoUrl?: string | null;
   lineup: Slot[];
   subs: Slot[];
 }) {
-  const cRc = coachRating != null ? ratingColor(coachRating) : null;
   const subsCompact = subs.length > 6;
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="eyebrow">Тренер</div>
-        <div className="font-display text-sm text-ivory">{coach ?? "—"}</div>
-        {coachRating != null && (
-          <span
-            className="rating-star h-6 w-6 flex items-center justify-center font-utility text-[9px] font-bold"
-            style={cRc ? { background: cRc.bg, color: cRc.text } : undefined}
-          >
-            {coachRating.toFixed(1)}
-          </span>
-        )}
+    // На десктопі — тренер/суддя ліворуч, поле по центру, лавка праворуч.
+    // На телефоні лишається типовий порядок зверху вниз (як і раніше).
+    <div className="lg:grid lg:grid-cols-[minmax(0,180px)_minmax(0,1fr)_minmax(0,220px)] lg:gap-6 lg:items-start">
+      <div className="flex flex-col gap-3 mb-6 lg:mb-0 lg:order-1">
+        <StaffCard label="Тренер" name={coach} rating={coachRating} photoUrl={coachPhotoUrl} />
+        {referee && <StaffCard label="Суддя" name={referee} rating={refereeRating} photoUrl={refereePhotoUrl} />}
       </div>
 
-      {/* Портретна орієнтація, як справжнє поле — не розтягуємо в ширину */}
-      <div className="relative w-full max-w-md md:max-w-2xl mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8">
-        {lineup.map((slot) => (
-          <PitchToken key={slot.id} slot={slot} />
-        ))}
+      <div className="lg:order-2">
+        {/* Портретна орієнтація, як справжнє поле — не розтягуємо в ширину */}
+        <div className="relative w-full max-w-md md:max-w-2xl lg:max-w-none mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8 lg:mb-0">
+          {lineup.map((slot) => (
+            <PitchToken key={slot.id} slot={slot} />
+          ))}
+        </div>
       </div>
 
       {subs.length > 0 && (
-        <>
+        <div className="lg:order-3">
           <div className="eyebrow mb-4">Заміни</div>
-          <div className="flex flex-wrap gap-x-6 gap-y-6">
+          <div className="flex flex-wrap lg:flex-col gap-x-6 gap-y-6 lg:gap-4">
             {subs.map((s) => (
               <TokenVisual key={s.id} slot={s} compact={subsCompact} />
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

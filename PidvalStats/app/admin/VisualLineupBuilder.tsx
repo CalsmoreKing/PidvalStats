@@ -22,19 +22,21 @@ export type PlayerDetail = {
   isCaptain: boolean;
   isInjured: boolean;
   goals: number;
+  penaltyGoals: number;
   assists: number;
   yellowCards: number;
   redCards: number;
   subOutMinute: string; // порожньо = не виходив (відіграв увесь матч)
   subInMinute: string; // на якій хвилині вийшов на поле (заміна)
   subForPlayerId: string; // кого замінив (для замін) — id гравця зі старту
-  funFact: string;
+  funFact: string; // кожен рядок — окремий факт, показуються карткою після матчу
 };
 
 export const emptyDetail: PlayerDetail = {
   isCaptain: false,
   isInjured: false,
   goals: 0,
+  penaltyGoals: 0,
   assists: 0,
   yellowCards: 0,
   redCards: 0,
@@ -409,14 +411,21 @@ export default function VisualLineupBuilder({
                       onClick={() => setDetail(p.id, { isInjured: !d.isInjured })}
                     />
                     <MiniNum icon="⚽" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
+                    <MiniNum
+                      icon="🥅"
+                      value={d.penaltyGoals}
+                      onChange={(v) => setDetail(p.id, { penaltyGoals: v })}
+                      max={d.goals}
+                    />
                     <MiniNum icon="👟" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
                     <MiniNum icon="🟨" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
                     <MiniNum icon="🟥" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
-                    <input
+                    <textarea
                       value={d.funFact}
                       onChange={(e) => setDetail(p.id, { funFact: e.target.value })}
-                      placeholder="цікавий факт (напр. Найбільше ключових передач — 8)"
-                      className="flex-1 min-w-[220px] bg-panel-raised rounded px-2 py-1 text-ivory placeholder:text-muted/60 outline-none"
+                      placeholder={"Факти про гравця, кожен з нового рядка\nнапр. Найбільше ключових передач — 8"}
+                      rows={2}
+                      className="flex-1 min-w-[220px] bg-panel-raised rounded px-2 py-1 text-ivory placeholder:text-muted/60 outline-none resize-y"
                     />
                   </div>
                 </div>

@@ -82,7 +82,7 @@ function PlayerVotePoster({
                 onClick={onToggleMvp}
                 aria-pressed={isMvp}
                 className={`rating-star h-7 w-7 shrink-0 flex items-center justify-center text-[9px] font-bold transition-opacity duration-150 ${
-                  isMvp ? "opacity-100" : "opacity-25 hover:opacity-60"
+                  isMvp ? "opacity-100" : "opacity-50 hover:opacity-80"
                 }`}
                 title="Обрати MVP матчу"
               >
@@ -107,7 +107,17 @@ function PlayerVotePoster({
               )}
             </div>
           )}
-          {p.funFact && <div className="text-[10px] text-gold-bright/80 leading-snug">{p.funFact}</div>}
+          {p.funFact && (
+            <div className="text-[10px] text-gold-bright/80 leading-snug flex flex-col gap-0.5">
+              {p.funFact
+                .split("\n")
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .map((line, i) => (
+                  <span key={i}>• {line}</span>
+                ))}
+            </div>
+          )}
 
           <div className="flex flex-col gap-1 mt-0.5">
             <div className="grid grid-cols-5 gap-1">
@@ -237,6 +247,7 @@ export default function VotingForm({
 
   const allRated =
     players.every((p) => ratings[p.playerId] != null) &&
+    mvpPlayerId != null &&
     (!coach || coachRating != null) &&
     (!referee || refereeRating != null);
   const readOnly = status === "done";
@@ -325,14 +336,23 @@ export default function VotingForm({
       {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}
 
       {!readOnly && (
-        <button
-          type="button"
-          disabled={!allRated || status === "submitting"}
-          onClick={submit}
-          className="mt-1 rounded-xl bg-gold text-void font-display text-lg py-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity duration-150"
-        >
-          {status === "submitting" ? "Надсилаємо…" : "Надіслати голос"}
-        </button>
+        <>
+          <button
+            type="button"
+            disabled={!allRated || status === "submitting"}
+            onClick={submit}
+            className="mt-1 rounded-xl bg-gold text-void font-display text-lg py-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity duration-150"
+          >
+            {status === "submitting" ? "Надсилаємо…" : "Надіслати голос"}
+          </button>
+          {!allRated && (
+            <p className="text-center text-[11px] text-muted -mt-1">
+              {mvpPlayerId == null
+                ? "Не забудь обрати MVP матчу (зірочка біля гравця) — і оціни всіх."
+                : "Онови оцінку кожного гравця, тренера й судді, щоб надіслати голос."}
+            </p>
+          )}
+        </>
       )}
     </div>
   );

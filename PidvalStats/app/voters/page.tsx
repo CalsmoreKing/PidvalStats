@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getVoterActivity } from "@/lib/queries";
+import { ratingColor } from "@/lib/display";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,15 @@ export default async function VotersPage() {
                     {v.matches_voted} {v.matches_voted === 1 ? "матч" : "матчів"} проголосовано
                   </div>
                 </div>
+                {v.avg_rating_given != null && (
+                  <div
+                    className="rating-star h-8 w-8 shrink-0 flex items-center justify-center font-utility text-[10px] font-bold"
+                    style={{ background: ratingColor(v.avg_rating_given).bg, color: ratingColor(v.avg_rating_given).text }}
+                    title="Середня оцінка, яку ставить цей фанат"
+                  >
+                    {v.avg_rating_given.toFixed(1)}
+                  </div>
+                )}
               </Link>
             ))}
           </div>

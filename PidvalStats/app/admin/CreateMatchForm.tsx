@@ -41,7 +41,10 @@ export default function CreateMatchForm({
         opponentCrestUrl: crestUrl || null,
         competitionId,
         isHome,
-        matchDate,
+        // Конвертуємо в UTC ТУТ, у браузері адміна (де "21:30" правильно
+        // означає 21:30 за його власним поясом) — а не на сервері, який
+        // на Vercel завжди в UTC і прочитав би "21:30" як 21:30 UTC.
+        matchDate: new Date(matchDate).toISOString(),
         venue,
         referee,
         coachName,

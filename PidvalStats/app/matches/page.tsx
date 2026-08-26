@@ -11,12 +11,19 @@ function phaseBorder(m: any): string {
   if (m.status === "voting_open") {
     return "border-gold bg-panel shadow-[0_0_18px_rgba(212,175,55,0.4)]";
   }
-  if (m.status === "live") {
+  // "live" як статус ніколи фактично не виставляється (в адмінці немає такої
+  // кнопки) — тому підсвічуємо суто за часом: якщо матч ще "scheduled", але
+  // орієнтовний час гри вже настав і не сплив, вважаємо його поточним.
+  if (m.status === "scheduled") {
     const phase = matchPhase(m.match_date);
     if (phase === "halftime") return "border-yellow-400 bg-panel shadow-[0_0_14px_rgba(250,204,21,0.3)]";
-    return "border-green-400 bg-panel shadow-[0_0_14px_rgba(74,222,128,0.3)]";
+    if (phase !== "over") return "border-green-400 bg-panel shadow-[0_0_14px_rgba(74,222,128,0.3)]";
   }
   return "border-white/5 bg-panel";
+}
+
+function isLiveNow(m: any): boolean {
+  return !m.is_cancelled && m.status === "scheduled" && matchPhase(m.match_date) !== "over";
 }
 
 export default async function MatchesPage() {
@@ -58,6 +65,12 @@ export default async function MatchesPage() {
                   {m.match_rating != null && !m.is_cancelled && (
                     <div className="rating-star absolute -top-2 -right-2 h-8 w-8 flex items-center justify-center font-utility text-[10px] font-bold">
                       {m.match_rating.toFixed(1)}
+                    </div>
+                  )}
+                  {isLiveNow(m) && (
+                    <div className="absolute -top-2 -left-2 flex items-center gap-1 rounded-full bg-green-500 text-[9px] font-bold text-void px-2 py-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-void animate-pulse" />
+                      LIVE
                     </div>
                   )}
 

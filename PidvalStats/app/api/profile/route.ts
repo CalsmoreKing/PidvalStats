@@ -10,15 +10,18 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Увійдіть через Telegram" }, { status: 401 });
   }
 
-  const { displayName, avatarUrl } = await req.json();
+  const { displayName, avatarUrl, showRatings } = await req.json();
   const supabase = createServiceClient();
+
+  const patch: Record<string, unknown> = {
+    custom_display_name: displayName || null,
+    custom_avatar_url: avatarUrl || null,
+  };
+  if (showRatings !== undefined) patch.show_ratings = showRatings;
 
   const { error } = await supabase
     .from("voters")
-    .update({
-      custom_display_name: displayName || null,
-      custom_avatar_url: avatarUrl || null,
-    })
+    .update(patch)
     .eq("id", voterId);
 
   if (error) {

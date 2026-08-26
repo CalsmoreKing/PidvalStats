@@ -18,6 +18,8 @@ type LineupInput = {
   funFact?: string | null;
   subOutMinute?: number | null;
   formationSlot?: number | null;
+  subForPlayerId?: string | null;
+  penaltyGoals?: number;
 };
 
 // Хвилини рахуємо самі, якщо адмін явно не переписав: гравець, який не
@@ -56,6 +58,8 @@ export async function POST(req: NextRequest) {
     fun_fact: r.funFact ?? null,
     sub_out_minute: r.subOutMinute ?? null,
     formation_slot: r.formationSlot ?? null,
+    sub_for_player_id: r.subForPlayerId || null,
+    penalty_goals: r.penaltyGoals ?? 0,
   }));
 
   // upsert по унікальному (match_id, player_id) — повторне збереження оновлює, не дублює

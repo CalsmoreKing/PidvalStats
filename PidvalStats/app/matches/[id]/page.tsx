@@ -31,6 +31,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       photoZoom: r.players.photo_zoom,
       nationality: r.players.nationality,
       goals: r.goals,
+      penaltyGoals: r.penalty_goals,
       assists: r.assists,
       yellowCards: r.yellow_cards,
       redCards: r.red_cards,
@@ -51,6 +52,7 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       photoZoom: r.players.photo_zoom,
       nationality: r.players.nationality,
       goals: r.goals,
+      penaltyGoals: r.penalty_goals,
       assists: r.assists,
       yellowCards: r.yellow_cards,
       redCards: r.red_cards,
@@ -59,6 +61,23 @@ export default async function MatchDetailPage({ params }: { params: { id: string
 
   const pitchSlots = resolvePitchPositions(starters);
   const captain = lineupRows.find((r) => r.is_captain);
+
+  // Картки з фактами про гравців — показуються ПІСЛЯ завершення матчу, під
+  // усім складом (а не в формі голосування, де це вже видно поруч з ім'ям).
+  const playersWithFacts = lineupRows
+    .filter((r) => r.fun_fact && String(r.fun_fact).trim())
+    .map((r) => ({
+      id: r.players.id,
+      name: r.players.full_name,
+      photoUrl: r.players.photo_url,
+      photoFocusX: r.players.photo_focus_x,
+      photoFocusY: r.players.photo_focus_y,
+      photoZoom: r.players.photo_zoom,
+      facts: String(r.fun_fact)
+        .split("\n")
+        .map((l: string) => l.trim())
+        .filter(Boolean),
+    }));
 
   const votablePlayers: VotablePlayer[] = lineupRows.map((r) => ({
     playerId: r.players.id,
@@ -118,7 +137,60 @@ export default async function MatchDetailPage({ params }: { params: { id: string
           11 і заміни.
         </p>
       ) : (
-        <FormationPitch coach={match.coach_name} coachRating={match.coach_rating} lineup={pitchSlots} subs={subs} />
+        <FormationPitch
+          coach={match.coach_name}
+          coachRating={match.coach_rating}
+          coachPhotoUrl={match.coaches?.photo_url}
+          referee={match.referee}
+          refereeRating={match.referee_rating}
+          refereePhotoUrl={match.referees?.photo_url}
+          lineup={pitchSlots}
+          subs={subs}
+        />
+      )}
+
+      {match.status === "finalized" && playersWithFacts.length > 0 && (
+        <div className="mt-8">
+          <div className="eyebrow mb-3">Факти про гравців цього матчу</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {playersWithFacts.map((p) => (
+              <a
+                key={p.id}
+                href={`/players/${p.id}`}
+                className="flex gap-3 rounded-xl border border-white/5 bg-panel px-4 py-3 hover:border-gold/30 transition-colors duration-150"
+              >
+                <div className="h-12 w-12 rounded-full overflow-hidden bg-panel-raised shrink-0">
+                  {p.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photoUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      style={{
+                        objectPosition: `${p.photoFocusX ?? 50}% ${p.photoFocusY ?? 50}%`,
+                        transform: `scale(${(p.photoZoom ?? 100) / 100})`,
+                      }}
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-ivory/30 text-sm">
+                      {p.name[0]}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm text-ivory mb-1">{p.name}</div>
+                  <div className="flex flex-col gap-0.5">
+                    {p.facts.map((f: string, i: number) => (
+                      <div key={i} className="text-[11px] text-muted leading-snug">
+                        • {f}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
       )}
 
       {(match.status === "scheduled" || match.status === "live" || match.status === "finished") &&
