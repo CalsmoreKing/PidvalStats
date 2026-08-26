@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     jerseyNumber,
     teamId,
     isActive,
+    nationality,
   } = await req.json();
   const supabase = createServiceClient();
 
@@ -33,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (photoZoom !== undefined) patch.photo_zoom = photoZoom;
   if (fullName !== undefined) patch.full_name = fullName;
   if (jerseyNumber !== undefined) patch.jersey_number = jerseyNumber;
+  if (nationality !== undefined) patch.nationality = nationality;
   // Перетягування між командами (RosterManager) і архівація гравців, що
   // покинули команду — статистика лишається, просто is_active = false.
   if (teamId !== undefined) patch.team_id = teamId;

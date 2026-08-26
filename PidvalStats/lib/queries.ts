@@ -184,20 +184,28 @@ export async function getPlayerProfile(playerId: string) {
     .eq("player_id", playerId)
     .maybeSingle();
 
-  const { data: history } = await supabase
+  const { data: historyRaw } = await supabase
     .from("match_lineups")
     .select(
       "avg_rating, minutes_played, goals, assists, is_starting, matches!inner(id, opponent_name, is_home, match_date, status, competitions(name))"
     )
     .eq("player_id", playerId)
-    .eq("matches.status", "finalized")
-    .order("match_date", { referencedTable: "matches", ascending: true });
+    .eq("matches.status", "finalized");
+
+  // ВАЖЛИВО: .order(col, { referencedTable }) в Supabase сортує рядки
+  // ВСЕРЕДИНІ вкладеного масиву (коли embed — це "багато"), а не батьківські
+  // рядки за полем зв'язаної таблиці — тут запит саме навпаки (match_lineups
+  // "багато", matches "один"), тому PostgREST цю умову просто ігнорував і
+  // матчі показувались у випадковому порядку. Сортуємо надійно в JS.
+  const history = [...(historyRaw ?? [])].sort(
+    (a: any, b: any) => new Date(a.matches.match_date).getTime() - new Date(b.matches.match_date).getTime()
+  );
 
   return {
     player,
     season: seasonRow ?? null,
     mvpAwards: mvpRow?.mvp_awards ?? 0,
-    history: history ?? [],
+    history,
   };
 }
 
@@ -267,6 +275,7 @@ export async function getVoterStats(voterId: string) {
   const averaged = Object.entries(byPlayer).map(([playerId, ratings]) => ({
     playerId,
     avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+    count: ratings.length,
   }));
 
   const top = [...averaged].sort((a, b) => b.avg - a.avg).slice(0, 3);
@@ -283,6 +292,7 @@ export async function getVoterStats(voterId: string) {
     arr.map((a) => ({
       ...players?.find((p) => p.id === a.playerId),
       myAverage: Math.round(a.avg * 10) / 10,
+      voteCount: a.count,
     }));
 
   return { top: attach(top), bottom: attach(bottom), histogram };

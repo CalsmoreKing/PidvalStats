@@ -32,8 +32,11 @@ export function pluralMatches(n: number): string {
 
 // Орієнтовна фаза матчу, поки він "live" — рахуємо просто від часу кікоффа,
 // бо не ведемо окремого "поточна хвилина" вручну.
-export function matchPhase(matchDateIso: string): "first-half" | "halftime" | "second-half" | "over" {
+export function matchPhase(
+  matchDateIso: string
+): "upcoming" | "first-half" | "halftime" | "second-half" | "over" {
   const elapsedMin = (Date.now() - new Date(matchDateIso).getTime()) / 60_000;
+  if (elapsedMin < 0) return "upcoming"; // матч ще не почався (навіть якщо це завтра чи пізніше)
   if (elapsedMin < 45) return "first-half";
   if (elapsedMin < 60) return "halftime";
   if (elapsedMin < 115) return "second-half";

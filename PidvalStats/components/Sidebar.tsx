@@ -9,6 +9,8 @@ const items = [
   { href: "/matches", label: "Матчі", hint: "Календар" },
   { href: "/season", label: "Сезон", hint: "Таблиця" },
   { href: "/voters", label: "Фанати", hint: "Хто як голосує" },
+  { href: "/manager", label: "Менеджер", hint: "В розробці" },
+  { href: "/social", label: "Соц Мережа", hint: "В розробці" },
 ];
 
 export default function Sidebar({

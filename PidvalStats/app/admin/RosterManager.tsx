@@ -16,6 +16,7 @@ type Player = {
   jersey_number: number | null;
   position: string;
   positions?: string[] | null;
+  nationality: string;
   photo_url: string | null;
   photo_focus_x?: number | null;
   photo_focus_y?: number | null;
@@ -37,6 +38,7 @@ type Edit = {
   zoom: number;
   fullName: string;
   jerseyNumber: string;
+  nationality: string;
 };
 
 function getVal(p: Player, edits: Record<string, Edit>): Edit {
@@ -50,6 +52,7 @@ function getVal(p: Player, edits: Record<string, Edit>): Edit {
       zoom: p.photo_zoom ?? 100,
       fullName: p.full_name,
       jerseyNumber: p.jersey_number != null ? String(p.jersey_number) : "",
+      nationality: p.nationality,
     }
   );
 }
@@ -95,6 +98,7 @@ export default function RosterManager({ roster, teams }: { roster: Player[]; tea
         photoFocusX: val.focusX,
         photoFocusY: val.focusY,
         photoZoom: val.zoom,
+        nationality: val.nationality,
         fullName: val.fullName,
         jerseyNumber: val.jerseyNumber === "" ? null : Number(val.jerseyNumber),
       }),
@@ -414,6 +418,25 @@ function PlayerRow({
         <span className="eyebrow shrink-0" title="Основна позиція (задається при додаванні)">
           {p.position}
         </span>
+
+        <select
+          value={val.nationality}
+          onChange={(e) => {
+            onPatch(p.id, val, { nationality: e.target.value });
+            onSave(p, { nationality: e.target.value });
+          }}
+          className="bg-panel-raised rounded px-1.5 py-1.5 text-ivory outline-none shrink-0 max-w-[110px]"
+          title="Національність"
+        >
+          {!(val.nationality in NATIONALITY_TO_ISO) && (
+            <option value={val.nationality}>{val.nationality}</option>
+          )}
+          {Object.keys(NATIONALITY_TO_ISO).map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
 
         <input
           placeholder="нікнейм (авто)"

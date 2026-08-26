@@ -89,14 +89,13 @@ export default function AccountPanel() {
                 open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
               }`}
             >
-              <div className="text-xs text-ivory">{voter.displayName}</div>
+              <Link
+                href={`/voters/${voter.id}`}
+                className="text-xs text-ivory hover:text-gold-bright transition-colors duration-150"
+              >
+                {voter.displayName}
+              </Link>
               {voter.username && <div className="text-[10px] text-muted -mt-1">@{voter.username}</div>}
-              <Link href={`/voters/${voter.id}`} className="text-[11px] text-muted hover:text-gold-bright">
-                Мої голоси
-              </Link>
-              <Link href="/settings" className="text-[11px] text-muted hover:text-gold-bright">
-                Профіль
-              </Link>
               <button onClick={logout} className="text-[11px] text-muted hover:text-gold-bright text-left">
                 Вийти
               </button>
