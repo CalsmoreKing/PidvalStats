@@ -97,7 +97,7 @@ export async function getLineupForMatch(matchId: string) {
   const { data, error } = await supabase
     .from("match_lineups")
     .select(
-      "id, is_starting, is_captain, minutes_played, goals, penalty_goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, sub_for_player_id, avg_rating, formation_slot, fun_fact, players(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, photo_zoom, position, nationality)"
+      "id, is_starting, is_captain, minutes_played, goals, penalty_goals, assists, yellow_cards, red_cards, sub_in_minute, sub_out_minute, sub_for_player_id, avg_rating, formation_slot, fun_fact, players!match_lineups_player_id_fkey(id, full_name, short_name, jersey_number, photo_url, photo_focus_x, photo_focus_y, photo_zoom, position, nationality)"
     )
     .eq("match_id", matchId);
   if (error) {
