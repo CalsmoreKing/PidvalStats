@@ -13,6 +13,7 @@ import {
   getCoachNames,
   getReferees,
   getCoaches,
+  getAdmins,
 } from "@/lib/queries";
 import CreateMatchForm from "./CreateMatchForm";
 import MatchAdminRow from "./MatchAdminRow";
@@ -40,7 +41,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, refereeNames, coachNames, referees, coaches] =
+  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, refereeNames, coachNames, referees, coaches, admins] =
     await Promise.all([
       getAllMatches(),
       getCompetitions(),
@@ -54,6 +55,7 @@ export default async function AdminPage() {
       getCoachNames(),
       getReferees(),
       getCoaches(),
+      getAdmins(),
     ]);
 
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
@@ -82,10 +84,8 @@ export default async function AdminPage() {
     { key: "voters", label: "Фанати", content: <VotersManager voters={voters} /> },
     { key: "club", label: "Клуб", content: team && <ClubSettings team={team} /> },
     { key: "staff", label: "Персонал", content: <StaffManager referees={referees} coaches={coaches} /> },
+    { key: "admins", label: "Адміни", content: <AdminsManager admins={admins} isOwnerViewer={admin.role === "owner"} /> },
   ];
-  if (admin.role === "owner") {
-    tabs.push({ key: "admins", label: "Адміни", content: <AdminsManager /> });
-  }
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-5xl mx-auto">

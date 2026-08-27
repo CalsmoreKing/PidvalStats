@@ -11,6 +11,7 @@ const items = [
   { href: "/voters", label: "Фанати", hint: "Хто як голосує" },
   { href: "/manager", label: "Менеджер", hint: "В розробці" },
   { href: "/social", label: "Соц Мережа", hint: "В розробці" },
+  { href: "/credits", label: "Контакт", hint: "Хто робить сайт" },
 ];
 
 export default function Sidebar({

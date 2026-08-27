@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Лише власник може призначати адмінів" }, { status: 403 });
   }
 
-  const { telegramUsername } = await req.json();
+  const { telegramUsername, title } = await req.json();
   if (!telegramUsername) {
     return NextResponse.json({ error: "Вкажи юзернейм" }, { status: 400 });
   }
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from("admins").insert({
     voter_id: voter.id,
     role: "admin",
+    title: title || null,
     granted_by: getVoterIdFromCookie(),
   });
 

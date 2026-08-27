@@ -338,6 +338,24 @@ export async function getReferees() {
   return data ?? [];
 }
 
+export async function getAdmins() {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("admins")
+    .select(
+      "id, role, title, created_at, voter_id, voters!admins_voter_id_fkey(display_name, telegram_username, custom_display_name, custom_avatar_url, avatar_url)"
+    )
+    .order("created_at");
+  // admins має ДВІ зовнішні прив'язки до voters (voter_id і granted_by) —
+  // без явного !admins_voter_id_fkey Postgres не вгадає, яку саме мати на
+  // увазі (та сама помилка PGRST201, що й з match_lineups/players раніше).
+  if (error) {
+    console.error("getAdmins", error);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getCoaches() {
   const supabase = createServerSupabase();
   const { data, error } = await supabase.from("coaches").select("id, name, photo_url").order("name");

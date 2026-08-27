@@ -144,8 +144,8 @@ function StaffCard({
 }) {
   const rc = rating != null ? ratingColor(rating) : null;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-panel px-3 py-2.5 lg:flex-col lg:text-center lg:py-4">
-      <div className="h-12 w-12 lg:h-16 lg:w-16 rounded-full overflow-hidden bg-panel-raised shrink-0 relative">
+    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-panel px-3 py-2.5 xl:flex-col xl:text-center xl:py-4">
+      <div className="h-12 w-12 xl:h-16 xl:w-16 rounded-full overflow-hidden bg-panel-raised shrink-0 relative">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -194,16 +194,18 @@ export default function FormationPitch({
 
   return (
     // На десктопі — тренер/суддя ліворуч, поле по центру, лавка праворуч.
-    // На телефоні лишається типовий порядок зверху вниз (як і раніше).
-    <div className="lg:grid lg:grid-cols-[minmax(0,180px)_minmax(0,1fr)_minmax(0,220px)] lg:gap-6 lg:items-start">
-      <div className="flex flex-col gap-3 mb-6 lg:mb-0 lg:order-1">
+    // Поріг — xl (не lg): при lg сторінці ще замало ширини для 3 колонок,
+    // поле стискалось і жетони гравців накладались одне на одне.
+    // На телефоні/планшеті лишається типовий порядок зверху вниз.
+    <div className="xl:grid xl:grid-cols-[minmax(0,160px)_minmax(0,1fr)_minmax(0,190px)] xl:gap-6 xl:items-start">
+      <div className="flex flex-col gap-3 mb-6 xl:mb-0 xl:order-1">
         <StaffCard label="Тренер" name={coach} rating={coachRating} photoUrl={coachPhotoUrl} />
         {referee && <StaffCard label="Суддя" name={referee} rating={refereeRating} photoUrl={refereePhotoUrl} />}
       </div>
 
-      <div className="lg:order-2">
+      <div className="xl:order-2">
         {/* Портретна орієнтація, як справжнє поле — не розтягуємо в ширину */}
-        <div className="relative w-full max-w-md md:max-w-2xl lg:max-w-none mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8 lg:mb-0">
+        <div className="relative w-full max-w-md md:max-w-2xl xl:max-w-none mx-auto aspect-[2/3] rounded-xl border border-white/10 bg-void/70 mb-8 xl:mb-0">
           {lineup.map((slot) => (
             <PitchToken key={slot.id} slot={slot} />
           ))}
@@ -211,9 +213,9 @@ export default function FormationPitch({
       </div>
 
       {subs.length > 0 && (
-        <div className="lg:order-3">
+        <div className="xl:order-3">
           <div className="eyebrow mb-4">Заміни</div>
-          <div className="flex flex-wrap lg:flex-col gap-x-6 gap-y-6 lg:gap-4">
+          <div className="flex flex-wrap xl:flex-col gap-x-6 gap-y-6 xl:gap-4">
             {subs.map((s) => (
               <TokenVisual key={s.id} slot={s} compact={subsCompact} />
             ))}
