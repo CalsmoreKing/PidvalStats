@@ -17,7 +17,21 @@ export const MATCH_STATUS_LABELS: Record<string, string> = {
   finalized: "Підсумовано",
 };
 
-export function matchStatusLabel(status: string): string {
+const PHASE_LABELS: Record<string, string> = {
+  "first-half": "Наживо · 1-й тайм",
+  halftime: "Наживо · перерва",
+  "second-half": "Наживо · 2-й тайм",
+};
+
+// matchDateIso — необов'язковий: якщо переданий і статус досі "scheduled",
+// показуємо реальну фазу гри (1-й тайм / перерва / 2-й тайм) замість
+// статичного "Заплановано", яке інакше висіло б увесь матч — статусу
+// "live" в адмінці ніхто не виставляє вручну.
+export function matchStatusLabel(status: string, matchDateIso?: string): string {
+  if (status === "scheduled" && matchDateIso) {
+    const phase = matchPhase(matchDateIso);
+    if (phase !== "upcoming" && phase !== "over") return PHASE_LABELS[phase] ?? MATCH_STATUS_LABELS[status];
+  }
   return MATCH_STATUS_LABELS[status] ?? status;
 }
 
@@ -39,13 +53,18 @@ export function matchPhase(
   if (elapsedMin < 0) return "upcoming"; // матч ще не почався (навіть якщо це завтра чи пізніше)
   if (elapsedMin < 45) return "first-half";
   if (elapsedMin < 60) return "halftime";
-  if (elapsedMin < 115) return "second-half";
+  // до 130 (не 115) — запас на затримки й додатковий час, щоб зелене
+  // підсвічування не зникало, поки матч фактично ще триває
+  if (elapsedMin < 130) return "second-half";
   return "over";
 }
 export function ratingColor(rating: number): { bg: string; text: string } {
-  if (rating >= 8.5) return { bg: "#2FBF71", text: "#0B2818" };
-  if (rating >= 7) return { bg: "#8FCB4A", text: "#17240A" };
-  if (rating >= 6) return { bg: "#D4AF37", text: "#17102A" };
-  if (rating >= 5) return { bg: "#E08A3C", text: "#2A1608" };
-  return { bg: "#DB4B4B", text: "#2A0808" };
+  // Раніше 7.0-8.4 і 8.5-10 обидва були відтінками зелено-жовтого й майже
+  // не різнились візуально. Тепер кожен рівень — виразно інший колір.
+  if (rating >= 9) return { bg: "#1FAE6B", text: "#07200F" }; // насичений смарагд
+  if (rating >= 8) return { bg: "#4FBF5A", text: "#0C2410" }; // трав'яний зелений
+  if (rating >= 7) return { bg: "#9ED13A", text: "#1B2408" }; // лаймовий
+  if (rating >= 6) return { bg: "#D4AF37", text: "#17102A" }; // золотий
+  if (rating >= 5) return { bg: "#E08A3C", text: "#2A1608" }; // оранжевий
+  return { bg: "#DB4B4B", text: "#2A0808" }; // червоний
 }

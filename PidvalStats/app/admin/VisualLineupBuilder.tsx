@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FORMATION_SLOTS } from "@/lib/formationSlots";
 import { TokenVisual } from "@/components/FormationPitch";
+import { BallIcon, BootIcon } from "@/components/icons";
 
 type RosterPlayer = {
   id: string;
@@ -410,14 +411,14 @@ export default function VisualLineupBuilder({
                       active={d.isInjured}
                       onClick={() => setDetail(p.id, { isInjured: !d.isInjured })}
                     />
-                    <MiniNum icon="⚽" value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
+                    <MiniNum icon={<BallIcon className="h-3.5 w-3.5" />} value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
                     <MiniNum
-                      icon="🥅"
+                      icon={<span className="text-[10px] font-bold text-muted">пен</span>}
                       value={d.penaltyGoals}
                       onChange={(v) => setDetail(p.id, { penaltyGoals: v })}
                       max={d.goals}
                     />
-                    <MiniNum icon="👟" value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
+                    <MiniNum icon={<BootIcon className="h-3.5 w-3.5" />} value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
                     <MiniNum icon="🟨" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
                     <MiniNum icon="🟥" value={d.redCards} onChange={(v) => setDetail(p.id, { redCards: v })} max={1} />
                     <textarea
@@ -444,14 +445,14 @@ function MiniNum({
   onChange,
   max = 20,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   value: number;
   onChange: (v: number) => void;
   max?: number;
 }) {
   return (
     <label className="flex items-center gap-1 text-muted">
-      <span>{icon}</span>
+      <span className="flex items-center justify-center w-3.5 shrink-0">{icon}</span>
       <input
         type="number"
         min={0}

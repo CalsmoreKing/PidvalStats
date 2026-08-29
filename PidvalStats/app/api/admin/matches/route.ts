@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { opponentName, opponentCrestUrl, competitionId, isHome, matchDate, venue, referee, coachName } =
+  const { opponentName, opponentCrestUrl, competitionId, isHome, matchDate, venue, referee, refereeId, coachName, coachId } =
     await req.json();
 
   if (!opponentName || !competitionId || !matchDate) {
@@ -30,15 +30,25 @@ export async function POST(req: NextRequest) {
   const kickoff = new Date(matchDate);
   const suggestedVotingOpensAt = new Date(kickoff.getTime() + 105 * 60_000);
 
-  async function upsertByName(table: "referees" | "coaches", name: string | null) {
-    if (!name) return null;
-    const { data: existing } = await supabase.from(table).select("id").eq("name", name).maybeSingle();
-    if (existing) return existing.id;
-    const { data: created } = await supabase.from(table).insert({ name }).select("id").single();
-    return created?.id ?? null;
+  // Або обрали ІСНУЮЧОГО (id — просто підтягуємо ім'я з бази), або вписали
+  // НОВОГО (name — заводимо новий запис). Раніше завжди йшло через ім'я,
+  // тому перейменування в матчі створювало ДРУГОГО суддю/тренера замість
+  // редагування наявного.
+  async function resolveStaff(table: "referees" | "coaches", id: string | null, name: string | null) {
+    if (id) {
+      const { data } = await supabase.from(table).select("id, name").eq("id", id).maybeSingle();
+      return data ? { id: data.id as string, name: data.name as string } : { id: null, name: null };
+    }
+    if (name) {
+      const { data: existing } = await supabase.from(table).select("id").eq("name", name).maybeSingle();
+      if (existing) return { id: existing.id as string, name };
+      const { data: created } = await supabase.from(table).insert({ name }).select("id").single();
+      return { id: created?.id ?? null, name };
+    }
+    return { id: null, name: null };
   }
-  const refereeId = await upsertByName("referees", referee || null);
-  const coachId = await upsertByName("coaches", coachName || null);
+  const refResolved = await resolveStaff("referees", refereeId || null, referee || null);
+  const coachResolved = await resolveStaff("coaches", coachId || null, coachName || null);
 
   const { data, error } = await supabase
     .from("matches")
@@ -50,10 +60,10 @@ export async function POST(req: NextRequest) {
       is_home: isHome,
       match_date: kickoff.toISOString(),
       venue: venue || null,
-      referee: referee || null,
-      referee_id: refereeId,
-      coach_name: coachName || null,
-      coach_id: coachId,
+      referee: refResolved.name,
+      referee_id: refResolved.id,
+      coach_name: coachResolved.name,
+      coach_id: coachResolved.id,
       status: "scheduled",
       voting_opens_at: suggestedVotingOpensAt.toISOString(),
     })

@@ -109,7 +109,7 @@ export default async function MatchesPage() {
                         )}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted">{matchStatusLabel(m.status)}</span>
+                      <span className="text-xs text-muted">{matchStatusLabel(m.status, m.match_date)}</span>
                     )}
                   </div>
                 </Link>

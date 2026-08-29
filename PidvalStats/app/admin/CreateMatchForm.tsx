@@ -2,19 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import StaffPicker from "./StaffPicker";
 
 type LastMatch = { competition_id: string; is_home: boolean; coach_name: string | null } | null;
+type Staff = { id: string; name: string };
 
 export default function CreateMatchForm({
   competitions,
   lastMatch,
-  refereeNames,
-  coachNames,
+  referees,
+  coaches,
 }: {
   competitions: { id: string; name: string }[];
   lastMatch: LastMatch;
-  refereeNames: string[];
-  coachNames: string[];
+  referees: Staff[];
+  coaches: Staff[];
 }) {
   const router = useRouter();
   const [opponent, setOpponent] = useState("");
@@ -23,8 +25,10 @@ export default function CreateMatchForm({
   const [isHome, setIsHome] = useState(lastMatch?.is_home ?? true);
   const [matchDate, setMatchDate] = useState("");
   const [venue, setVenue] = useState("");
-  const [referee, setReferee] = useState("");
-  const [coachName, setCoachName] = useState(lastMatch?.coach_name ?? "");
+  const [refereeSelId, setRefereeSelId] = useState("");
+  const [refereeNewName, setRefereeNewName] = useState("");
+  const [coachSelId, setCoachSelId] = useState("");
+  const [coachNewName, setCoachNewName] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -46,8 +50,10 @@ export default function CreateMatchForm({
         // на Vercel завжди в UTC і прочитав би "21:30" як 21:30 UTC.
         matchDate: new Date(matchDate).toISOString(),
         venue,
-        referee,
-        coachName,
+        refereeId: refereeSelId && refereeSelId !== "__new__" ? refereeSelId : null,
+        referee: refereeSelId === "__new__" ? refereeNewName : null,
+        coachId: coachSelId && coachSelId !== "__new__" ? coachSelId : null,
+        coachName: coachSelId === "__new__" ? coachNewName : null,
       }),
     });
     const data = await res.json();
@@ -59,7 +65,8 @@ export default function CreateMatchForm({
     setOpponent("");
     setCrestUrl("");
     setVenue("");
-    setReferee("");
+    setRefereeSelId("");
+    setRefereeNewName("");
     setMatchDate("");
     setStatus("idle");
     router.refresh();
@@ -109,30 +116,24 @@ export default function CreateMatchForm({
           placeholder="Стадіон"
           className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
         />
-        <input
-          value={referee}
-          onChange={(e) => setReferee(e.target.value)}
-          placeholder="Рефері"
-          list="referee-names"
-          className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+        <StaffPicker
+          label="Суддя"
+          newLabel="новий суддя"
+          staff={referees}
+          selectedId={refereeSelId}
+          onSelectId={setRefereeSelId}
+          newName={refereeNewName}
+          onNewName={setRefereeNewName}
         />
-        <datalist id="referee-names">
-          {refereeNames.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
-        <input
-          value={coachName}
-          onChange={(e) => setCoachName(e.target.value)}
-          placeholder="Тренер"
-          list="coach-names"
-          className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+        <StaffPicker
+          label="Тренер"
+          newLabel="новий тренер"
+          staff={coaches}
+          selectedId={coachSelId}
+          onSelectId={setCoachSelId}
+          newName={coachNewName}
+          onNewName={setCoachNewName}
         />
-        <datalist id="coach-names">
-          {coachNames.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
       </div>
 
       {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}

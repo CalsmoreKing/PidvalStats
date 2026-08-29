@@ -10,6 +10,7 @@ type Slot = {
   x?: number;
   y?: number;
   rating?: number | null;
+  isLiveRating?: boolean; // ще рахується (голосування триває), не фінальне
   isCaptain?: boolean;
   photoUrl?: string | null;
   photoFocusX?: number | null;
@@ -102,8 +103,11 @@ export function TokenVisual({ slot, compact }: { slot: Slot; compact?: boolean }
 
         {slot.rating != null && (
           <div
-            className="rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-8 md:w-8 flex items-center justify-center font-utility text-[9px] md:text-xs font-bold z-20"
+            className={`rating-star absolute -bottom-2 -right-2 h-6 w-6 md:h-8 md:w-8 flex items-center justify-center font-utility text-[9px] md:text-xs font-bold z-20 ${
+              slot.isLiveRating ? "opacity-55" : ""
+            }`}
             style={rc ? { background: rc.bg, color: rc.text } : undefined}
+            title={slot.isLiveRating ? "Поки триває голосування — ще не фінальна оцінка" : undefined}
           >
             {slot.rating.toFixed(1)}
           </div>

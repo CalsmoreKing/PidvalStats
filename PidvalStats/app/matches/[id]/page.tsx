@@ -3,7 +3,7 @@ import FormationPitch from "@/components/FormationPitch";
 import VotingForm, { VotablePlayer } from "@/components/VotingForm";
 import VotingCountdown from "@/components/VotingCountdown";
 import VotingOpensCountdown from "@/components/VotingOpensCountdown";
-import { getMatchById, getLineupForMatch, getMyVotesForMatch } from "@/lib/queries";
+import { getMatchById, getLineupForMatch, getMyVotesForMatch, getLiveRatings } from "@/lib/queries";
 import { resolvePitchPositions } from "@/lib/formation";
 import { matchStatusLabel } from "@/lib/display";
 
@@ -14,6 +14,10 @@ export default async function MatchDetailPage({ params }: { params: { id: string
   if (!match) return notFound();
 
   const lineupRows: any[] = await getLineupForMatch(params.id);
+  // Поки голосування триває — рахуємо часткові оцінки напряму з votes при
+  // кожному відкритті сторінки (не в реальному часі без перезавантаження,
+  // але завжди актуально на момент заходу на сторінку).
+  const liveRatings = match.status === "voting_open" ? await getLiveRatings(params.id) : {};
 
   const starters = lineupRows
     .filter((r) => r.is_starting)
@@ -23,7 +27,8 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       shortName: r.players.short_name,
       jersey: r.players.jersey_number,
       position: r.players.position,
-      rating: r.avg_rating,
+      rating: r.avg_rating ?? liveRatings[r.players.id] ?? null,
+      isLiveRating: r.avg_rating == null && liveRatings[r.players.id] != null,
       isCaptain: r.is_captain,
       photoUrl: r.players.photo_url,
       photoFocusX: r.players.photo_focus_x,
@@ -45,7 +50,8 @@ export default async function MatchDetailPage({ params }: { params: { id: string
       name: r.players.full_name,
       shortName: r.players.short_name,
       jersey: r.players.jersey_number,
-      rating: r.avg_rating,
+      rating: r.avg_rating ?? liveRatings[r.players.id] ?? null,
+      isLiveRating: r.avg_rating == null && liveRatings[r.players.id] != null,
       photoUrl: r.players.photo_url,
       photoFocusX: r.players.photo_focus_x,
       photoFocusY: r.players.photo_focus_y,
@@ -117,10 +123,10 @@ export default async function MatchDetailPage({ params }: { params: { id: string
             value:
               match.status === "voting_open" && match.voting_closes_at ? (
                 <span>
-                  {matchStatusLabel(match.status)} · <VotingCountdown closesAt={match.voting_closes_at} />
+                  {matchStatusLabel(match.status, match.match_date)} · <VotingCountdown closesAt={match.voting_closes_at} />
                 </span>
               ) : (
-                matchStatusLabel(match.status)
+                matchStatusLabel(match.status, match.match_date)
               ),
           },
         ].map((row) => (

@@ -340,20 +340,30 @@ export async function getReferees() {
 
 export async function getAdmins() {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("admins")
-    .select(
-      "id, role, title, created_at, voter_id, voters!admins_voter_id_fkey(display_name, telegram_username, custom_display_name, custom_avatar_url, avatar_url)"
-    )
+    .select("id, role, title, created_at, voter_id")
     .order("created_at");
-  // admins має ДВІ зовнішні прив'язки до voters (voter_id і granted_by) —
-  // без явного !admins_voter_id_fkey Postgres не вгадає, яку саме мати на
-  // увазі (та сама помилка PGRST201, що й з match_lineups/players раніше).
   if (error) {
     console.error("getAdmins", error);
     return [];
   }
-  return data ?? [];
+  if (!rows || rows.length === 0) return [];
+
+  // Окремим запитом, а не вкладеним embed — admins має ДВІ зовнішні
+  // прив'язки до voters (voter_id і granted_by), і навіть з явним
+  // !admins_voter_id_fkey раніше ловили порожні імена. Так надійніше.
+  const voterIds = [...new Set(rows.map((r) => r.voter_id))];
+  const { data: voters, error: votersError } = await supabase
+    .from("voters")
+    .select("id, display_name, telegram_username, custom_display_name, custom_avatar_url, avatar_url")
+    .in("id", voterIds);
+  if (votersError) console.error("getAdmins voters", votersError);
+
+  return rows.map((r) => ({
+    ...r,
+    voter: voters?.find((v) => v.id === r.voter_id) ?? null,
+  }));
 }
 
 export async function getCoaches() {
@@ -377,6 +387,24 @@ export async function getCompetitions() {
     return [];
   }
   return data ?? [];
+}
+
+// Часткові (ще не фінальні) середні оцінки, поки голосування триває —
+// напряму з votes через службовий ключ (RLS блокує прямий SELECT для
+// анонімів), рахуються "на льоту" при кожному відкритті сторінки матчу.
+export async function getLiveRatings(matchId: string): Promise<Record<string, number>> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.from("votes").select("player_id, rating").eq("match_id", matchId);
+  if (error || !data) return {};
+  const byPlayer: Record<string, number[]> = {};
+  for (const v of data) {
+    (byPlayer[v.player_id] ??= []).push(v.rating);
+  }
+  const result: Record<string, number> = {};
+  for (const [playerId, ratings] of Object.entries(byPlayer)) {
+    result[playerId] = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------

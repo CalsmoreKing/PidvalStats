@@ -8,17 +8,17 @@ type AdminRow = {
   role: string;
   title: string | null;
   voter_id: string;
-  voters?: {
+  voter: {
     display_name: string | null;
     telegram_username: string | null;
     custom_display_name: string | null;
     custom_avatar_url: string | null;
     avatar_url: string | null;
-  }[] | null;
+  } | null;
 };
 
 function adminName(a: AdminRow) {
-  const v = a.voters?.[0];
+  const v = a.voter;
   return v?.custom_display_name || v?.display_name || v?.telegram_username || "Адмін";
 }
 

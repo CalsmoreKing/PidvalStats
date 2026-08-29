@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { matchStatusLabel } from "@/lib/display";
 import VisualLineupBuilder, { PlayerDetail, emptyDetail } from "./VisualLineupBuilder";
+import StaffPicker from "./StaffPicker";
 
 type RosterPlayer = {
   id: string;
@@ -51,15 +52,15 @@ export default function MatchAdminRow({
   roster,
   existingLineup,
   competitions,
-  refereeNames,
-  coachNames,
+  referees,
+  coaches,
 }: {
   match: any;
   roster: RosterPlayer[];
   existingLineup: any[];
   competitions: { id: string; name: string }[];
-  refereeNames: string[];
-  coachNames: string[];
+  referees: { id: string; name: string }[];
+  coaches: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -71,8 +72,10 @@ export default function MatchAdminRow({
   const [homeScore, setHomeScore] = useState(match.home_score ?? "");
   const [awayScore, setAwayScore] = useState(match.away_score ?? "");
   const [venue, setVenue] = useState(match.venue ?? "");
-  const [referee, setReferee] = useState(match.referee ?? "");
-  const [coachName, setCoachName] = useState(match.coach_name ?? "");
+  const [refereeSelId, setRefereeSelId] = useState(match.referee_id ?? "");
+  const [refereeNewName, setRefereeNewName] = useState("");
+  const [coachSelId, setCoachSelId] = useState(match.coach_id ?? "");
+  const [coachNewName, setCoachNewName] = useState("");
   const [competitionId, setCompetitionId] = useState(match.competition_id ?? "");
   const [matchDate, setMatchDate] = useState(
     match.match_date ? new Date(match.match_date).toISOString().slice(0, 16) : ""
@@ -165,7 +168,7 @@ export default function MatchAdminRow({
       setMsg(data.error ?? "Помилка відкриття голосування");
       return;
     }
-    setMsg("Голосування відкрито на 30 хвилин");
+    setMsg("Голосування відкрито до 12:00 завтра");
     router.refresh();
   }
 
@@ -192,8 +195,10 @@ export default function MatchAdminRow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         venue,
-        referee,
-        coachName,
+        refereeId: refereeSelId && refereeSelId !== "__new__" ? refereeSelId : null,
+        referee: refereeSelId === "__new__" ? refereeNewName : undefined,
+        coachId: coachSelId && coachSelId !== "__new__" ? coachSelId : null,
+        coachName: coachSelId === "__new__" ? coachNewName : undefined,
         competitionId,
         matchDate: matchDate ? new Date(matchDate).toISOString() : match.match_date,
         votingOpensAt: votingOpensAt ? new Date(votingOpensAt).toISOString() : null,
@@ -238,7 +243,7 @@ export default function MatchAdminRow({
         <Link href={`/matches/${match.id}`} className="text-sm text-ivory hover:text-gold-bright">
           {match.is_home ? "Барселона" : match.opponent_name} —{" "}
           {match.is_home ? match.opponent_name : "Барселона"}
-          <span className="text-muted ml-2 text-xs">{matchStatusLabel(match.status)}</span>
+          <span className="text-muted ml-2 text-xs">{matchStatusLabel(match.status, match.match_date)}</span>
         </Link>
         <div className="flex items-center gap-2">
           <input
@@ -351,30 +356,24 @@ export default function MatchAdminRow({
               placeholder="Стадіон"
               className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
             />
-            <input
-              value={referee}
-              onChange={(e) => setReferee(e.target.value)}
-              placeholder="Рефері"
-              list="referee-names-edit"
-              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            <StaffPicker
+              label="Суддя"
+              newLabel="новий суддя"
+              staff={referees}
+              selectedId={refereeSelId}
+              onSelectId={setRefereeSelId}
+              newName={refereeNewName}
+              onNewName={setRefereeNewName}
             />
-            <datalist id="referee-names-edit">
-              {refereeNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
-            <input
-              value={coachName}
-              onChange={(e) => setCoachName(e.target.value)}
-              placeholder="Тренер"
-              list="coach-names-edit"
-              className="bg-panel-raised rounded-lg px-3 py-2 text-sm text-ivory placeholder:text-muted outline-none"
+            <StaffPicker
+              label="Тренер"
+              newLabel="новий тренер"
+              staff={coaches}
+              selectedId={coachSelId}
+              onSelectId={setCoachSelId}
+              newName={coachNewName}
+              onNewName={setCoachNewName}
             />
-            <datalist id="coach-names-edit">
-              {coachNames.map((n) => (
-                <option key={n} value={n} />
-              ))}
-            </datalist>
           </div>
           <button
             onClick={saveDetails}

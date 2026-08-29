@@ -14,10 +14,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     homeScore,
     awayScore,
     venue,
+    refereeId,
     referee,
-    refereeRating,
+    coachId,
     coachName,
-    coachRating,
     matchDate,
     competitionId,
     isCancelled,
@@ -29,34 +29,39 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (homeScore !== undefined) patch.home_score = homeScore == null ? null : Math.max(0, homeScore);
   if (awayScore !== undefined) patch.away_score = awayScore == null ? null : Math.max(0, awayScore);
   if (venue !== undefined) patch.venue = venue;
-  if (refereeRating !== undefined) patch.referee_rating = refereeRating;
-  if (coachRating !== undefined) patch.coach_rating = coachRating;
   if (matchDate !== undefined) patch.match_date = matchDate;
   if (competitionId !== undefined) patch.competition_id = competitionId;
   if (isCancelled !== undefined) patch.is_cancelled = isCancelled;
   if (votingOpensAt !== undefined) patch.voting_opens_at = votingOpensAt || null;
 
-  // Рефері/тренер: шукаємо за іменем у довіднику (щоб однакове ім'я не
-  // плодило дублі в підсумкових таблицях), створюємо, якщо ще нема.
-  if (referee !== undefined) {
-    patch.referee = referee;
-    if (referee) {
-      const { data: existing } = await supabase.from("referees").select("id").eq("name", referee).maybeSingle();
-      const refId = existing?.id ?? (await supabase.from("referees").insert({ name: referee }).select("id").single()).data?.id;
-      patch.referee_id = refId ?? null;
-    } else {
-      patch.referee_id = null;
+  // Рефері/тренер: або обрали ІСНУЮЧОГО зі списку (refereeId/coachId) —
+  // просто підтягуємо ім'я з бази, або вписали НОВОГО (referee/coachName —
+  // рядок, ще не порожній undefined) — заводимо новий запис. Перейменування
+  // вже наявного тепер робиться виключно у вкладці "Персонал", не тут —
+  // раніше пошук завжди йшов ЗА ІМЕНЕМ при кожному збереженні матчу, тому
+  // будь-яка зміна тексту створювала ДРУГОГО суддю/тренера.
+  async function resolveStaff(table: "referees" | "coaches", id: string | null, name: string | undefined) {
+    if (id) {
+      const { data } = await supabase.from(table).select("id, name").eq("id", id).maybeSingle();
+      return data ? { id: data.id as string, name: data.name as string } : { id: null, name: null };
     }
+    if (name) {
+      const { data: existing } = await supabase.from(table).select("id").eq("name", name).maybeSingle();
+      if (existing) return { id: existing.id as string, name };
+      const { data: created } = await supabase.from(table).insert({ name }).select("id").single();
+      return { id: created?.id ?? null, name };
+    }
+    return { id: null, name: null };
   }
-  if (coachName !== undefined) {
-    patch.coach_name = coachName;
-    if (coachName) {
-      const { data: existing } = await supabase.from("coaches").select("id").eq("name", coachName).maybeSingle();
-      const coachId = existing?.id ?? (await supabase.from("coaches").insert({ name: coachName }).select("id").single()).data?.id;
-      patch.coach_id = coachId ?? null;
-    } else {
-      patch.coach_id = null;
-    }
+  if (refereeId !== undefined || referee !== undefined) {
+    const r = await resolveStaff("referees", refereeId || null, referee || undefined);
+    patch.referee_id = r.id;
+    patch.referee = r.name;
+  }
+  if (coachId !== undefined || coachName !== undefined) {
+    const c = await resolveStaff("coaches", coachId || null, coachName || undefined);
+    patch.coach_id = c.id;
+    patch.coach_name = c.name;
   }
 
   const { error } = await supabase.from("matches").update(patch).eq("id", params.id);

@@ -10,14 +10,27 @@ export default function VotingOpensCountdown({ opensAt }: { opensAt: string }) {
 
   useEffect(() => {
     function tick() {
-      setRemaining(Math.max(0, new Date(opensAt).getTime() - Date.now()));
+      // БЕЗ Math.max(0, ...) — від'ємне значення означає "час уже настав,
+      // а адмін ще не відкрив голосування вручну". Раніше компонент у
+      // цьому разі просто зникав (return null), і виглядало, ніби таймера
+      // взагалі нема.
+      setRemaining(new Date(opensAt).getTime() - Date.now());
     }
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [opensAt]);
 
-  if (remaining === null || remaining <= 0) return null;
+  if (remaining === null) return null;
+
+  if (remaining <= 0) {
+    return (
+      <div className="rounded-xl border border-gold/20 bg-panel px-4 py-3 text-center">
+        <div className="eyebrow mb-1 text-gold-bright">Голосування ось-ось відкриється</div>
+        <div className="text-xs text-muted">Орієнтовний час уже настав — чекаємо, поки адмін відкриє його вручну.</div>
+      </div>
+    );
+  }
 
   const totalSec = Math.floor(remaining / 1000);
   const hours = Math.floor(totalSec / 3600);

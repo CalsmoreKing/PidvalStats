@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAdminInfo } from "@/lib/admin";
+import { nextDayNoonInTimezone } from "@/lib/time";
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const admin = await getAdminInfo();
@@ -12,7 +13,9 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   const supabase = createServiceClient();
   const now = new Date();
-  const closesAt = new Date(now.getTime() + 30 * 60_000);
+  // До 12:00 наступного дня — навмисно довше за 30 хв, щоб більше фанатів
+  // встигли проголосувати після матчу.
+  const closesAt = nextDayNoonInTimezone(now);
 
   const { error } = await supabase
     .from("matches")

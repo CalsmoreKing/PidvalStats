@@ -15,7 +15,7 @@ export default async function CreditsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {admins.map((a) => {
-            const v = a.voters?.[0];
+            const v = a.voter;
             const name = v?.custom_display_name || v?.display_name || v?.telegram_username || "Адмін";
             const avatarUrl = v?.custom_avatar_url || v?.avatar_url;
             const role = a.title || (a.role === "owner" ? "Власник" : "Адмін");
@@ -32,7 +32,12 @@ export default async function CreditsPage() {
                   )}
                 </div>
                 <div>
-                  <div className="text-sm text-ivory">{name}</div>
+                  <div className="text-sm text-ivory">
+                    {name}
+                    {v?.telegram_username && (
+                      <span className="text-muted font-normal"> · @{v.telegram_username}</span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted">{role}</div>
                 </div>
               </div>
