@@ -68,7 +68,7 @@ export async function getAllMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, match_rating, voting_closes_at, voting_opens_at, venue, referee, coach_name, competition_id, competitions(name)"
+      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, match_rating, voting_closes_at, voting_opens_at, is_extra_time, venue, referee, referee_id, coach_name, coach_id, competition_id, competitions(name)"
     )
     .order("match_date", { ascending: false });
   if (error) {
@@ -174,7 +174,7 @@ export async function getPlayerProfile(playerId: string) {
 
   const { data: seasonRow } = await supabase
     .from("season_stats")
-    .select("matches_rated, total_goals, total_assists, total_votes, weighted_season_rating")
+    .select("matches_rated, total_goals, total_penalty_goals, total_assists, total_minutes, total_votes, weighted_season_rating")
     .eq("player_id", playerId)
     .maybeSingle();
 
@@ -213,7 +213,7 @@ export async function getLastMatch() {
   const supabase = createServerSupabase();
   const { data } = await supabase
     .from("matches")
-    .select("competition_id, is_home, coach_name")
+    .select("competition_id, is_home, coach_name, coach_id")
     .order("match_date", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -364,6 +364,20 @@ export async function getAdmins() {
     ...r,
     voter: voters?.find((v) => v.id === r.voter_id) ?? null,
   }));
+}
+
+export async function getCreditHelpers() {
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("credit_helpers")
+    .select("id, name, title, photo_url")
+    .order("sort_order")
+    .order("created_at");
+  if (error) {
+    console.error("getCreditHelpers", error);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getCoaches() {

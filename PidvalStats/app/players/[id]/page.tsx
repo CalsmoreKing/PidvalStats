@@ -76,16 +76,22 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
       </div>
 
       {/* Підсумки сезону */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-10">
         {[
           { label: "Матчі", value: season?.matches_rated ?? 0 },
-          { label: "Голи", value: season?.total_goals ?? 0 },
+          {
+            label: "Голи",
+            value: season?.total_goals ?? 0,
+            hint: season?.total_penalty_goals ? `${season.total_penalty_goals} з пенальті` : undefined,
+          },
           { label: "Асисти", value: season?.total_assists ?? 0 },
+          { label: "Хвилини", value: season?.total_minutes ?? 0 },
           { label: "MVP", value: mvpAwards },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border border-white/5 bg-panel px-3 py-3 text-center">
             <div className="font-display text-2xl text-gold-bright">{s.value}</div>
             <div className="eyebrow mt-1">{s.label}</div>
+            {s.hint && <div className="text-[9px] text-muted mt-0.5">({s.hint})</div>}
           </div>
         ))}
       </div>

@@ -18,8 +18,10 @@ export default async function SeasonPage() {
     full_name: p.full_name,
     matches: p.matches_rated ?? 0,
     goals: p.total_goals ?? 0,
+    penaltyGoals: p.total_penalty_goals ?? 0,
     assists: p.total_assists ?? 0,
     votes: p.total_votes ?? 0,
+    minutes: p.total_minutes ?? 0,
     season_rating: p.weighted_season_rating,
   }));
 
@@ -31,8 +33,10 @@ export default async function SeasonPage() {
       competitionSlug: r.competition_slug,
       matches: r.matches_rated ?? 0,
       goals: r.total_goals ?? 0,
+      penaltyGoals: r.total_penalty_goals ?? 0,
       assists: r.total_assists ?? 0,
       votes: r.total_votes ?? 0,
+      minutes: r.total_minutes ?? 0,
       weightedSum: r.rating_weighted_sum ?? 0,
       minutesSum: r.minutes_sum ?? 0,
     }));

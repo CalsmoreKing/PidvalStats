@@ -83,6 +83,7 @@ export default function MatchAdminRow({
   const [votingOpensAt, setVotingOpensAt] = useState(
     match.voting_opens_at ? new Date(match.voting_opens_at).toISOString().slice(0, 16) : ""
   );
+  const [isExtraTime, setIsExtraTime] = useState(match.is_extra_time ?? false);
 
   const [savingLineup, setSavingLineup] = useState(false);
   const [savingScore, setSavingScore] = useState(false);
@@ -128,7 +129,7 @@ export default function MatchAdminRow({
     const res = await fetch("/api/admin/lineup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: match.id, lineup: rows }),
+      body: JSON.stringify({ matchId: match.id, lineup: rows, isExtraTime }),
     });
     const data = await res.json();
     setSavingLineup(false);
@@ -202,6 +203,7 @@ export default function MatchAdminRow({
         competitionId,
         matchDate: matchDate ? new Date(matchDate).toISOString() : match.match_date,
         votingOpensAt: votingOpensAt ? new Date(votingOpensAt).toISOString() : null,
+        isExtraTime,
       }),
     });
     setSavingDetails(false);
@@ -339,6 +341,10 @@ export default function MatchAdminRow({
                 Орієнтовний час відкриття голосування (таймер на сторінці матчу) — необов'язково
               </span>
             </div>
+            <label className="flex items-center gap-2 text-sm text-ivory">
+              <input type="checkbox" checked={isExtraTime} onChange={(e) => setIsExtraTime(e.target.checked)} />
+              Був додатковий час (120 хв замість 90)
+            </label>
             <select
               value={competitionId}
               onChange={(e) => setCompetitionId(e.target.value)}

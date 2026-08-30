@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     competitionId,
     isCancelled,
     votingOpensAt,
+    isExtraTime,
   } = await req.json();
   const supabase = createServiceClient();
 
@@ -33,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (competitionId !== undefined) patch.competition_id = competitionId;
   if (isCancelled !== undefined) patch.is_cancelled = isCancelled;
   if (votingOpensAt !== undefined) patch.voting_opens_at = votingOpensAt || null;
+  if (isExtraTime !== undefined) patch.is_extra_time = isExtraTime;
 
   // Рефері/тренер: або обрали ІСНУЮЧОГО зі списку (refereeId/coachId) —
   // просто підтягуємо ім'я з бази, або вписали НОВОГО (referee/coachName —

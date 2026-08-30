@@ -12,6 +12,7 @@ import {
   getReferees,
   getCoaches,
   getAdmins,
+  getCreditHelpers,
 } from "@/lib/queries";
 import CreateMatchForm from "./CreateMatchForm";
 import MatchAdminRow from "./MatchAdminRow";
@@ -39,7 +40,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, referees, coaches, admins] =
+  const [matches, competitions, roster, fullRoster, teams, lastMatch, voters, team, referees, coaches, admins, helpers] =
     await Promise.all([
       getAllMatches(),
       getCompetitions(),
@@ -52,6 +53,7 @@ export default async function AdminPage() {
       getReferees(),
       getCoaches(),
       getAdmins(),
+      getCreditHelpers(),
     ]);
 
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
@@ -80,11 +82,11 @@ export default async function AdminPage() {
     { key: "voters", label: "Фанати", content: <VotersManager voters={voters} /> },
     { key: "club", label: "Клуб", content: team && <ClubSettings team={team} /> },
     { key: "staff", label: "Персонал", content: <StaffManager referees={referees} coaches={coaches} /> },
-    { key: "admins", label: "Адміни", content: <AdminsManager admins={admins} isOwnerViewer={admin.role === "owner"} /> },
+    { key: "admins", label: "Адміни", content: <AdminsManager admins={admins} helpers={helpers} isOwnerViewer={admin.role === "owner"} /> },
   ];
 
   return (
-    <div className="px-4 md:px-12 py-8 max-w-5xl mx-auto">
+    <div className="px-4 md:px-12 py-8 pb-24 max-w-5xl mx-auto">
       <div className="eyebrow mb-1">Панель адміна · {admin.role === "owner" ? "власник" : "адмін"}</div>
       <h1 className="font-display text-3xl text-ivory mb-8">Адмінка</h1>
       <AdminTabs tabs={tabs} />

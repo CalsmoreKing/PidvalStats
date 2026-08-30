@@ -4,10 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { ratingColor } from "@/lib/display";
 import LocalDateTime from "@/components/LocalDateTime";
+import { TokenVisual } from "@/components/FormationPitch";
 
 type Rating = {
   playerId: string;
   playerName: string;
+  shortName: string | null;
+  jersey: number | null;
+  photoUrl: string | null;
+  photoFocusX: number | null;
+  photoFocusY: number | null;
+  photoZoom: number | null;
+  nationality: string | null;
   rating: number;
   isMvpPick: boolean;
   isStarting: boolean | null;
@@ -66,40 +74,60 @@ export default function VoterMatchRow({
       </div>
 
       {open && (
-        <div className="flex flex-col divide-y divide-white/5">
+        <div className="bg-panel px-5 py-5 flex flex-col gap-5">
           {starters.length > 0 && (
-            <div className="px-5 py-2 text-[10px] eyebrow bg-panel/40">Старт</div>
+            <div>
+              <div className="eyebrow mb-3">Старт</div>
+              <div className="flex flex-wrap gap-x-5 gap-y-6">
+                {starters.map((r) => (
+                  <TokenLink key={r.playerId} r={r} />
+                ))}
+              </div>
+            </div>
           )}
-          {starters.map((r) => (
-            <RatingRow key={r.playerId} r={r} />
-          ))}
-          {bench.length > 0 && <div className="px-5 py-2 text-[10px] eyebrow bg-panel/40">Лавка</div>}
-          {bench.map((r) => (
-            <RatingRow key={r.playerId} r={r} />
-          ))}
+          {bench.length > 0 && (
+            <div>
+              <div className="eyebrow mb-3">Лавка</div>
+              <div className="flex flex-wrap gap-x-5 gap-y-6">
+                {bench.map((r) => (
+                  <TokenLink key={r.playerId} r={r} compact />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function RatingRow({ r }: { r: Rating }) {
+function TokenLink({ r, compact }: { r: Rating; compact?: boolean }) {
   const rc = ratingColor(r.rating);
   return (
-    <Link
-      href={`/players/${r.playerId}`}
-      className="flex items-center justify-between px-5 py-2.5 bg-panel/60 hover:bg-panel transition-colors duration-150"
-    >
-      <div className="flex items-center gap-2 text-sm text-ivory">
-        {r.playerName}
-        {r.isMvpPick && <span className="eyebrow text-gold-bright">MVP</span>}
-      </div>
-      <span
-        className="rating-star h-8 w-8 flex items-center justify-center font-utility text-[11px] font-bold"
-        style={{ background: rc.bg, color: rc.text }}
-      >
-        {r.rating}
-      </span>
+    <Link href={`/players/${r.playerId}`} className="relative">
+      <TokenVisual
+        slot={{
+          id: r.playerId,
+          name: r.playerName,
+          shortName: r.shortName,
+          jersey: r.jersey,
+          rating: r.rating,
+          photoUrl: r.photoUrl,
+          photoFocusX: r.photoFocusX,
+          photoFocusY: r.photoFocusY,
+          photoZoom: r.photoZoom,
+          nationality: r.nationality,
+        }}
+        compact={compact}
+      />
+      {r.isMvpPick && (
+        <span
+          className="absolute -top-1 left-1/2 -translate-x-1/2 rating-star px-1.5 py-0.5 text-[8px] font-bold"
+          style={{ background: rc.bg, color: rc.text }}
+        >
+          MVP
+        </span>
+      )}
     </Link>
   );
 }

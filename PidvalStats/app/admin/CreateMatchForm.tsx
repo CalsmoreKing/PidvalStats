@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StaffPicker from "./StaffPicker";
 
-type LastMatch = { competition_id: string; is_home: boolean; coach_name: string | null } | null;
+type LastMatch = { competition_id: string; is_home: boolean; coach_name: string | null; coach_id: string | null } | null;
 type Staff = { id: string; name: string };
 
 export default function CreateMatchForm({
@@ -27,7 +27,7 @@ export default function CreateMatchForm({
   const [venue, setVenue] = useState("");
   const [refereeSelId, setRefereeSelId] = useState("");
   const [refereeNewName, setRefereeNewName] = useState("");
-  const [coachSelId, setCoachSelId] = useState("");
+  const [coachSelId, setCoachSelId] = useState(lastMatch?.coach_id ?? "");
   const [coachNewName, setCoachNewName] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");

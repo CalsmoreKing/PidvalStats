@@ -1,13 +1,15 @@
 import PlayerCard, { PlayerCardData } from "@/components/PlayerCard";
-import { getTopPlayers, getTopMatches } from "@/lib/queries";
+import { getTopPlayers, getTopMatches, getVoterActivity } from "@/lib/queries";
 import { ratingColor } from "@/lib/display";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampNouPage() {
-  const [topPlayersRaw, topMatches] = await Promise.all([
+  const [topPlayersRaw, topMatches, topVoters] = await Promise.all([
     getTopPlayers(3),
     getTopMatches(3),
+    getVoterActivity(),
   ]);
 
   const topPlayers: PlayerCardData[] = topPlayersRaw.map((p: any) => ({
@@ -74,6 +76,41 @@ export default async function CampNouPage() {
           )}
         </section>
       </div>
+
+      {topVoters.length > 0 && (
+        <section>
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="font-display text-xl text-ivory">Топ‑3 найактивніших фанатів</h2>
+            <Link href="/voters" className="text-xs text-muted hover:text-gold-bright transition-colors duration-150">
+              Усі →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {topVoters.slice(0, 3).map((v: any) => (
+              <Link
+                key={v.voter_id}
+                href={`/voters/${v.voter_id}`}
+                className="flex items-center gap-3 rounded-xl border border-white/5 bg-panel/60 px-4 py-3 hover:border-gold/30 transition-colors duration-150"
+              >
+                <div className="h-11 w-11 rounded-full overflow-hidden bg-panel-raised shrink-0 flex items-center justify-center">
+                  {v.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={v.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm text-ivory/60">{(v.display_name ?? "?")[0]}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm text-ivory truncate">{v.display_name}</div>
+                  <div className="text-xs text-muted">
+                    {v.matches_voted} {v.matches_voted === 1 ? "матч" : "матчів"}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

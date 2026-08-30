@@ -17,16 +17,19 @@ type CompRow = {
   competitionSlug: string;
   matches: number;
   goals: number;
+  penaltyGoals: number;
   assists: number;
   votes: number;
+  minutes: number;
   weightedSum: number;
   minutesSum: number;
 };
 
-type SortKey = "matches" | "goals" | "assists" | "votes" | "season_rating";
+type SortKey = "matches" | "goals" | "assists" | "votes" | "minutes" | "season_rating";
 
 const columns: { key: SortKey; label: string }[] = [
   { key: "matches", label: "Матчі" },
+  { key: "minutes", label: "Хвилини" },
   { key: "goals", label: "Голи" },
   { key: "assists", label: "Асисти" },
   { key: "votes", label: "Голоси" },
@@ -46,8 +49,11 @@ export default function SeasonTable({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const allSlugs = useMemo(() => competitions.map((c) => c.slug), [competitions]);
-  // За замовчуванням — усі турніри обрані (нічого не приховано).
-  const [checked, setChecked] = useState<Set<string>>(() => new Set(allSlugs));
+  // За замовчуванням товариські ВИМКНЕНІ — вони давно закінчились і лише
+  // спотворюють статистику дублерів, викликаних на одну товариську гру.
+  const [checked, setChecked] = useState<Set<string>>(
+    () => new Set(allSlugs.filter((s) => s !== "friendly"))
+  );
   const allChecked = allSlugs.length > 0 && allSlugs.every((s) => checked.has(s));
 
   function toggleComp(slug: string) {
@@ -71,15 +77,28 @@ export default function SeasonTable({
   const displayRows = useMemo(() => {
     const acc = new Map<
       string,
-      { matches: number; goals: number; assists: number; votes: number; weightedSum: number; minutesSum: number }
+      {
+        matches: number;
+        goals: number;
+        penaltyGoals: number;
+        assists: number;
+        votes: number;
+        minutes: number;
+        weightedSum: number;
+        minutesSum: number;
+      }
     >();
     for (const r of byCompetition) {
       if (!checked.has(r.competitionSlug)) continue;
-      const cur = acc.get(r.id) ?? { matches: 0, goals: 0, assists: 0, votes: 0, weightedSum: 0, minutesSum: 0 };
+      const cur =
+        acc.get(r.id) ??
+        { matches: 0, goals: 0, penaltyGoals: 0, assists: 0, votes: 0, minutes: 0, weightedSum: 0, minutesSum: 0 };
       cur.matches += r.matches;
       cur.goals += r.goals;
+      cur.penaltyGoals += r.penaltyGoals;
       cur.assists += r.assists;
       cur.votes += r.votes;
+      cur.minutes += r.minutes;
       cur.weightedSum += r.weightedSum;
       cur.minutesSum += r.minutesSum;
       acc.set(r.id, cur);
@@ -90,8 +109,10 @@ export default function SeasonTable({
         full_name: namesById.get(id) ?? "",
         matches: v.matches,
         goals: v.goals,
+        penaltyGoals: v.penaltyGoals,
         assists: v.assists,
         votes: v.votes,
+        minutes: v.minutes,
         season_rating: v.minutesSum > 0 ? Math.round((v.weightedSum / v.minutesSum) * 10) / 10 : null,
       }))
       .filter((r) => r.full_name);
@@ -126,30 +147,50 @@ export default function SeasonTable({
               ? "bg-panel-raised border-gold/40 text-gold-bright"
               : "border-white/10 text-muted hover:border-white/25"
           }`}
-          title="Обрати всі турніри"
+          title="Обрати всі турніри, включно з товариськими"
         >
           Всі
         </button>
-        {competitions.map((c) => {
-          const on = checked.has(c.slug);
-          return (
-            <button
-              key={c.id}
-              onClick={() => toggleComp(c.slug)}
-              className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
-                on
-                  ? "bg-panel-raised border-gold/40 text-gold-bright"
-                  : "border-white/10 text-muted hover:border-white/25"
-              }`}
-            >
-              {c.name}
-            </button>
-          );
-        })}
+        {competitions
+          .filter((c) => c.slug !== "friendly")
+          .map((c) => {
+            const on = checked.has(c.slug);
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggleComp(c.slug)}
+                className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
+                  on
+                    ? "bg-panel-raised border-gold/40 text-gold-bright"
+                    : "border-white/10 text-muted hover:border-white/25"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+        {competitions
+          .filter((c) => c.slug === "friendly")
+          .map((c) => {
+            const on = checked.has(c.slug);
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggleComp(c.slug)}
+                className={`px-4 py-2 rounded-full text-sm border transition-colors duration-150 ${
+                  on
+                    ? "bg-panel-raised border-gold/40 text-gold-bright"
+                    : "border-white/10 text-muted hover:border-white/25"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
       </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="bg-panel-raised text-muted eyebrow text-left">
               <th className="px-5 py-3 font-normal">#</th>
@@ -169,7 +210,7 @@ export default function SeasonTable({
           <tbody className="divide-y divide-white/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-6 text-center text-muted">
+                <td colSpan={8} className="px-5 py-6 text-center text-muted">
                   {checked.size === 0 ? "Обери хоча б один турнір." : "Немає даних для обраних турнірів."}
                 </td>
               </tr>
@@ -185,7 +226,11 @@ export default function SeasonTable({
                     </Link>
                   </td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.matches}</td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">{p.goals}</td>
+                  <td className="px-5 py-4 text-right font-utility text-muted">{p.minutes}</td>
+                  <td className="px-5 py-4 text-right font-utility text-muted">
+                    {p.goals}
+                    {p.penaltyGoals > 0 && <span className="text-[10px] text-muted/60"> ({p.penaltyGoals})</span>}
+                  </td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.assists}</td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.votes}</td>
                   <td className="px-5 py-4 text-right">

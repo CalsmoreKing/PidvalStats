@@ -23,11 +23,11 @@ type LineupInput = {
 };
 
 // Хвилини рахуємо самі, якщо адмін явно не переписав: гравець, який не
-// виходив, відіграв увесь матч.
-function computeMinutes(r: LineupInput): number {
+// виходив, відіграв увесь матч — 90 хв, або 120, якщо був овертайм.
+function computeMinutes(r: LineupInput, fullDuration: number): number {
   if (r.minutesPlayed != null) return r.minutesPlayed;
-  if (r.isStarting) return r.subOutMinute ?? 90;
-  return r.subInMinute != null ? Math.max(0, 90 - r.subInMinute) : 0;
+  if (r.isStarting) return r.subOutMinute ?? fullDuration;
+  return r.subInMinute != null ? Math.max(0, fullDuration - r.subInMinute) : 0;
 }
 
 export async function POST(req: NextRequest) {
@@ -36,10 +36,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Лише для адмінів" }, { status: 403 });
   }
 
-  const { matchId, lineup } = await req.json();
+  const { matchId, lineup, isExtraTime } = await req.json();
   if (!matchId || !Array.isArray(lineup)) {
     return NextResponse.json({ error: "Некоректні дані складу" }, { status: 400 });
   }
+  const fullDuration = isExtraTime ? 120 : 90;
 
   const supabase = createServiceClient();
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     is_starting: r.isStarting,
     is_captain: r.isCaptain ?? false,
     is_injured: r.isInjured ?? false,
-    minutes_played: computeMinutes(r),
+    minutes_played: computeMinutes(r, fullDuration),
     goals: r.goals ?? 0,
     assists: r.assists ?? 0,
     yellow_cards: r.yellowCards ?? 0,
