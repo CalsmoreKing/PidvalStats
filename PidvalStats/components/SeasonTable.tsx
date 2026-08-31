@@ -228,8 +228,12 @@ export default function SeasonTable({
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.matches}</td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.minutes}</td>
                   <td className="px-5 py-4 text-right font-utility text-muted">
-                    {p.goals}
-                    {p.penaltyGoals > 0 && <span className="text-[10px] text-muted/60"> ({p.penaltyGoals})</span>}
+                    <div className="leading-none">
+                      <div>{p.goals}</div>
+                      <div className="text-[9px] text-muted/50 mt-0.5 h-2.5">
+                        {p.penaltyGoals > 0 ? `(${p.penaltyGoals} пен.)` : ""}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.assists}</td>
                   <td className="px-5 py-4 text-right font-utility text-muted">{p.votes}</td>

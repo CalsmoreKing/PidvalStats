@@ -9,26 +9,110 @@ async function getFirstTeamId(supabase: ReturnType<typeof createServerSupabase>)
 export async function getTopPlayers(limit = 3) {
   const supabase = createServerSupabase();
   const teamId = await getFirstTeamId(supabase);
-  const { data, error } = await supabase
-    .from("season_stats")
-    .select("*")
-    .eq("team_id", teamId ?? "")
-    .order("weighted_season_rating", { ascending: false, nullsFirst: false })
-    .limit(limit);
+
+  // Рахуємо з season_stats_by_competition, виключаючи товариські — так само,
+  // як і за замовчуванням на /season. season_stats (весь сезон одразу) досі
+  // враховує товариські, тому тут його НЕ використовуємо.
+  const { data: rows, error } = await supabase
+    .from("season_stats_by_competition")
+    .select("player_id, competition_slug, rating_weighted_sum, minutes_sum")
+    .neq("competition_slug", "friendly");
   if (error) {
     console.error("getTopPlayers", error);
     return [];
   }
-  return data ?? [];
+
+  const byPlayer = new Map<string, { weightedSum: number; minutesSum: number }>();
+  for (const row of rows ?? []) {
+    const cur = byPlayer.get(row.player_id) ?? { weightedSum: 0, minutesSum: 0 };
+    cur.weightedSum += row.rating_weighted_sum ?? 0;
+    cur.minutesSum += row.minutes_sum ?? 0;
+    byPlayer.set(row.player_id, cur);
+  }
+  const ranked = Array.from(byPlayer.entries())
+    .map(([playerId, v]) => ({
+      playerId,
+      rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
+    }))
+    .filter((r): r is { playerId: string; rating: number } => r.rating != null)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, limit);
+
+  if (ranked.length === 0) return [];
+
+  const { data: players } = await supabase
+    .from("players")
+    .select("id, full_name, team_id, position, nationality, birth_date, jersey_number, photo_url")
+    .in("id", ranked.map((r) => r.playerId))
+    .eq("team_id", teamId ?? "");
+
+  return ranked
+    .map((r) => {
+      const p = players?.find((pl) => pl.id === r.playerId);
+      if (!p) return null;
+      return { ...p, player_id: p.id, weighted_season_rating: Math.round(r.rating * 100) / 100 };
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
+}
+
+export async function getBottomPlayers(limit = 3) {
+  const supabase = createServerSupabase();
+  const teamId = await getFirstTeamId(supabase);
+
+  const { data: rows, error } = await supabase
+    .from("season_stats_by_competition")
+    .select("player_id, competition_slug, rating_weighted_sum, minutes_sum, matches_rated")
+    .neq("competition_slug", "friendly");
+  if (error) {
+    console.error("getBottomPlayers", error);
+    return [];
+  }
+
+  const byPlayer = new Map<string, { weightedSum: number; minutesSum: number; matches: number }>();
+  for (const row of rows ?? []) {
+    const cur = byPlayer.get(row.player_id) ?? { weightedSum: 0, minutesSum: 0, matches: 0 };
+    cur.weightedSum += row.rating_weighted_sum ?? 0;
+    cur.minutesSum += row.minutes_sum ?? 0;
+    cur.matches += row.matches_rated ?? 0;
+    byPlayer.set(row.player_id, cur);
+  }
+  // Мінімум 2 оцінені матчі — щоб один невдалий вихід на 10 хв не ставив
+  // гравця автоматично "найгіршим сезону".
+  const ranked = Array.from(byPlayer.entries())
+    .map(([playerId, v]) => ({
+      playerId,
+      matches: v.matches,
+      rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
+    }))
+    .filter((r): r is { playerId: string; matches: number; rating: number } => r.rating != null && r.matches >= 2)
+    .sort((a, b) => a.rating - b.rating)
+    .slice(0, limit);
+
+  if (ranked.length === 0) return [];
+
+  const { data: players } = await supabase
+    .from("players")
+    .select("id, full_name, team_id, position, nationality, birth_date, jersey_number, photo_url")
+    .in("id", ranked.map((r) => r.playerId))
+    .eq("team_id", teamId ?? "");
+
+  return ranked
+    .map((r) => {
+      const p = players?.find((pl) => pl.id === r.playerId);
+      if (!p) return null;
+      return { ...p, player_id: p.id, weighted_season_rating: Math.round(r.rating * 100) / 100 };
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
 }
 
 export async function getTopMatches(limit = 3) {
   const supabase = createServerSupabase();
   const { data, error } = await supabase
     .from("matches")
-    .select("id, opponent_name, is_home, home_score, away_score, match_rating, competitions(name)")
+    .select("id, opponent_name, is_home, home_score, away_score, match_rating, competitions!inner(name, slug)")
     .eq("status", "finalized")
     .eq("is_cancelled", false)
+    .neq("competitions.slug", "friendly")
     .order("match_rating", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) {

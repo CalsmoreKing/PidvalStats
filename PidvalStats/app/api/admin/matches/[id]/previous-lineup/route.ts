@@ -12,10 +12,23 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const supabase = createServiceClient();
 
+  const { data: current } = await supabase
+    .from("matches")
+    .select("match_date")
+    .eq("id", params.id)
+    .maybeSingle();
+  if (!current) {
+    return NextResponse.json({ slots: [] });
+  }
+
+  // ВАЖЛИВО: раніше тут просто брався найновіший ІНШИЙ матч у базі, без
+  // фільтра "раніше за датою поточного" — тому якщо вже створено наступний
+  // матч (пізніша дата), редагування ЗАВЕРШЕНОГО матчу підтягувало не той
+  // склад (або порожній, бо в майбутнього матчу лінійки ще нема).
   const { data: prevMatch } = await supabase
     .from("matches")
     .select("id")
-    .neq("id", params.id)
+    .lt("match_date", current.match_date)
     .order("match_date", { ascending: false })
     .limit(1)
     .maybeSingle();

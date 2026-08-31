@@ -78,6 +78,7 @@ export default function VisualLineupBuilder({
   const [showAllForSub, setShowAllForSub] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [duplicateMsg, setDuplicateMsg] = useState("");
 
   const usedIds = new Set([...Object.values(slotAssignments).filter(Boolean), ...subIds]);
   const startersInSquad = Object.values(slotAssignments).filter(Boolean) as string[];
@@ -98,13 +99,18 @@ export default function VisualLineupBuilder({
 
   async function duplicatePrevious() {
     setDuplicating(true);
+    setDuplicateMsg("");
     const res = await fetch(`/api/admin/matches/${matchId}/previous-lineup`);
     const data = await res.json();
     setDuplicating(false);
-    if (!res.ok || !data.slots?.length) return;
+    if (!res.ok || !data.slots?.length) {
+      setDuplicateMsg("Не знайшов попередній матч зі складом — можливо, це найперший матч у базі.");
+      return;
+    }
     const next: Record<number, string | null> = {};
     for (const row of data.slots) next[row.formation_slot] = row.player_id;
     setSlotAssignments(next);
+    setDuplicateMsg(`Продубльовано ${data.slots.length} гравців зі старту`);
   }
 
   const playerById = (id: string) => roster.find((p) => p.id === id);
@@ -151,8 +157,8 @@ export default function VisualLineupBuilder({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <p></p>
+      <div className="flex items-center justify-between mb-3 gap-3">
+        <p className="text-[11px] text-muted">{duplicateMsg}</p>
         <button
           onClick={duplicatePrevious}
           disabled={duplicating}
@@ -411,12 +417,18 @@ export default function VisualLineupBuilder({
                       active={d.isInjured}
                       onClick={() => setDetail(p.id, { isInjured: !d.isInjured })}
                     />
-                    <MiniNum icon={<BallIcon className="h-3.5 w-3.5" />} value={d.goals} onChange={(v) => setDetail(p.id, { goals: v })} />
+                    <MiniNum
+                      icon={<BallIcon className="h-3.5 w-3.5" />}
+                      value={d.goals}
+                      onChange={(v) => setDetail(p.id, { goals: v })}
+                      title="Голи ЗАГАЛОМ за цей матч (включно з пенальті, якщо був)"
+                    />
                     <MiniNum
                       icon={<span className="text-[10px] font-bold text-muted">пен</span>}
                       value={d.penaltyGoals}
                       onChange={(v) => setDetail(p.id, { penaltyGoals: v })}
                       max={d.goals}
+                      title="Скільки з голів вище — саме з пенальті (не додається зверху, а входить у загальну кількість)"
                     />
                     <MiniNum icon={<BootIcon className="h-3.5 w-3.5" />} value={d.assists} onChange={(v) => setDetail(p.id, { assists: v })} />
                     <MiniNum icon="🟨" value={d.yellowCards} onChange={(v) => setDetail(p.id, { yellowCards: v })} max={2} />
@@ -444,14 +456,16 @@ function MiniNum({
   value,
   onChange,
   max = 20,
+  title,
 }: {
   icon: React.ReactNode;
   value: number;
   onChange: (v: number) => void;
   max?: number;
+  title?: string;
 }) {
   return (
-    <label className="flex items-center gap-1 text-muted">
+    <label className="flex items-center gap-1 text-muted" title={title}>
       <span className="flex items-center justify-center w-3.5 shrink-0">{icon}</span>
       <input
         type="number"

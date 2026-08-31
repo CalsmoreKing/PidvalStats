@@ -91,7 +91,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
           <div key={s.label} className="rounded-lg border border-white/5 bg-panel px-3 py-3 text-center">
             <div className="font-display text-2xl text-gold-bright">{s.value}</div>
             <div className="eyebrow mt-1">{s.label}</div>
-            {s.hint && <div className="text-[9px] text-muted mt-0.5">({s.hint})</div>}
+            <div className="text-[9px] text-muted mt-0.5 h-3">{s.hint ? `(${s.hint})` : ""}</div>
           </div>
         ))}
       </div>
