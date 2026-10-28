@@ -1,0 +1,405 @@
+"use client";
+
+import { useState } from "react";
+import { flagUrl } from "@/lib/flags";
+import StatIcon from "@/components/StatIcon";
+import { shortName } from "@/lib/display";
+import { positionOrder } from "@/lib/positions";
+
+export type VotablePlayer = {
+  playerId: string;
+  name: string;
+  jersey: number;
+  isSub?: boolean;
+  position?: string | null;
+  photoUrl?: string | null;
+  nationality?: string | null;
+  minutesPlayed?: number | null;
+  goals?: number;
+  penaltyGoals?: number;
+  assists?: number;
+  funFact?: string | null;
+};
+
+function PlayerVotePoster({
+  p,
+  rating,
+  onRate,
+  isMvp,
+  onToggleMvp,
+  readOnly,
+}: {
+  p: VotablePlayer;
+  rating: number | undefined;
+  onRate: (n: number) => void;
+  isMvp: boolean;
+  onToggleMvp: () => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <div className="relative aspect-[2/1] rounded-2xl overflow-hidden border border-white/5 bg-panel">
+      {p.nationality && (
+        <div
+          className="absolute -inset-6"
+          style={{
+            backgroundImage: `url(${flagUrl(p.nationality, "svg")})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            transform: "rotate(-4deg) scale(1.3)",
+          }}
+          aria-hidden
+        />
+      )}
+
+      {/* Затемнення на всю картку одним градієнтом — без різкого шва
+          між фото і кнопками, ледь торкається лівого краю */}
+      <div className="absolute inset-0 bg-gradient-to-r from-panel/15 via-panel/70 to-panel/95" aria-hidden />
+
+      <div className="relative h-full flex items-stretch">
+        {/* Фото зліва — як на банері профілю */}
+        <div className="w-[36%] shrink-0 h-full flex items-end justify-center">
+          {p.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={p.photoUrl}
+              alt={p.name}
+              className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center">
+              <span className="font-display text-3xl text-ivory/20">{shortName(p.name)[0]}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center px-3 py-2 gap-1">
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="text-xs text-ivory truncate">
+              <span className="font-utility text-gold-bright/80 mr-1">{p.jersey}</span>
+              {shortName(p.name)}
+              {p.isSub && <span className="eyebrow ml-1">заміна</span>}
+            </div>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={onToggleMvp}
+                aria-pressed={isMvp}
+                className={`rating-star h-7 w-7 shrink-0 flex items-center justify-center text-[9px] font-bold transition-opacity duration-150 ${
+                  isMvp ? "opacity-100" : "opacity-50 hover:opacity-80"
+                }`}
+                title="Обрати MVP матчу"
+              >
+                MVP
+              </button>
+            )}
+            {readOnly && isMvp && (
+              <div className="rating-star h-7 w-7 shrink-0 flex items-center justify-center text-[9px] font-bold">
+                MVP
+              </div>
+            )}
+          </div>
+
+          {(p.minutesPlayed != null || (p.goals ?? 0) > 0 || (p.assists ?? 0) > 0) && (
+            <div className="text-[10px] text-muted flex items-center gap-1.5 flex-wrap">
+              {p.minutesPlayed != null && <span>{p.minutesPlayed}&apos;</span>}
+              {(p.goals ?? 0) - (p.penaltyGoals ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5">
+                  <StatIcon kind="goal" className="h-3 w-3" />×{(p.goals ?? 0) - (p.penaltyGoals ?? 0)}
+                </span>
+              )}
+              {(p.penaltyGoals ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5" title="Голи з пенальті">
+                  <StatIcon kind="penalty_goal" className="h-3 w-3" />×{p.penaltyGoals}
+                </span>
+              )}
+              {(p.assists ?? 0) > 0 && (
+                <span className="flex items-center gap-0.5">
+                  <StatIcon kind="assist" className="h-3 w-3" />×{p.assists}
+                </span>
+              )}
+            </div>
+          )}
+          {p.funFact && (
+            <div className="text-[10px] text-gold-bright/80 leading-snug flex flex-col gap-0.5">
+              {p.funFact
+                .split("\n")
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .map((line, i) => (
+                  <span key={i}>• {line}</span>
+                ))}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 mt-0.5">
+            <div className="grid grid-cols-5 gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {[6, 7, 8, 9, 10].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RateButton({
+  n,
+  active,
+  onClick,
+  readOnly,
+}: {
+  n: number;
+  active: boolean;
+  onClick: () => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={readOnly}
+      onClick={onClick}
+      className={`h-7 rounded font-utility text-xs transition-colors duration-150 ${
+        active
+          ? "bg-gold text-void font-bold"
+          : readOnly
+          ? "bg-panel-raised/50 text-muted/40"
+          : "bg-panel-raised text-muted hover:text-ivory"
+      }`}
+    >
+      {n}
+    </button>
+  );
+}
+
+function StaffVotePoster({
+  label,
+  name,
+  photoUrl,
+  rating,
+  onRate,
+  readOnly,
+}: {
+  label: string;
+  name: string;
+  photoUrl?: string | null;
+  rating: number | undefined;
+  onRate: (n: number) => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <div className="relative aspect-[2/1] rounded-2xl overflow-hidden border border-white/5 bg-panel">
+      <div className="relative h-full flex items-stretch">
+        <div className="w-[36%] shrink-0 h-full flex items-end justify-center bg-panel-raised/40">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt={name} className="max-h-full w-auto object-contain object-bottom" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center">
+              <span className="font-display text-3xl text-ivory/20">{name[0]}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center px-3 py-2 gap-1">
+          <div className="text-xs text-ivory truncate mb-0.5">
+            <span className="eyebrow mr-1.5">{label}</span>
+            {name}
+          </div>
+          <div className="flex flex-col gap-1 mt-0.5">
+            <div className="grid grid-cols-5 gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              {[6, 7, 8, 9, 10].map((n) => (
+                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function VotingForm({
+  matchId,
+  players,
+  coach,
+  referee,
+  initialVotes,
+}: {
+  matchId: string;
+  players: VotablePlayer[];
+  coach?: { name: string; photoUrl?: string | null } | null;
+  referee?: { name: string; photoUrl?: string | null } | null;
+  initialVotes?: {
+    ratings: Record<string, number>;
+    mvpPlayerId: string | null;
+    coachRating?: number | null;
+    refereeRating?: number | null;
+  } | null;
+}) {
+  const [ratings, setRatings] = useState<Record<string, number>>(initialVotes?.ratings ?? {});
+  const [mvpPlayerId, setMvpPlayerId] = useState<string | null>(initialVotes?.mvpPlayerId ?? null);
+  const [coachRating, setCoachRating] = useState<number | undefined>(initialVotes?.coachRating ?? undefined);
+  const [refereeRating, setRefereeRating] = useState<number | undefined>(initialVotes?.refereeRating ?? undefined);
+  const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">(
+    initialVotes ? "done" : "idle"
+  );
+  const [wasEdit, setWasEdit] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Порядок: від воротаря до нападників; заміни — окремим блоком нижче,
+  // тренер і суддя — ще нижче, окремо від гравців.
+  const sortPlayers = (list: VotablePlayer[]) =>
+    [...list].sort((a, b) => positionOrder(a.position) - positionOrder(b.position) || a.jersey - b.jersey);
+  const starters = sortPlayers(players.filter((p) => !p.isSub));
+  const subs = sortPlayers(players.filter((p) => p.isSub));
+
+  const allRated =
+    players.every((p) => ratings[p.playerId] != null) &&
+    mvpPlayerId != null &&
+    (!coach || coachRating != null) &&
+    (!referee || refereeRating != null);
+  const readOnly = status === "done";
+
+  async function submit() {
+    setStatus("submitting");
+    setErrorMsg("");
+    try {
+      const res = await fetch("/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchId,
+          ratings: players.map((p) => ({ playerId: p.playerId, rating: ratings[p.playerId] })),
+          mvpPlayerId,
+          coachRating: coachRating ?? null,
+          refereeRating: refereeRating ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error ?? "Щось пішло не так");
+        setStatus("error");
+        return;
+      }
+      setWasEdit(!!data.edited || !!initialVotes);
+      setStatus("done");
+    } catch {
+      setErrorMsg("Не вдалось надіслати голос. Перевір з'єднання.");
+      setStatus("error");
+    }
+  }
+
+  const renderPosters = (list: VotablePlayer[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {list.map((p) => (
+        <PlayerVotePoster
+          key={p.playerId}
+          p={p}
+          rating={ratings[p.playerId]}
+          onRate={(n) => !readOnly && setRatings((r) => ({ ...r, [p.playerId]: n }))}
+          isMvp={mvpPlayerId === p.playerId}
+          onToggleMvp={() => setMvpPlayerId((cur) => (cur === p.playerId ? null : p.playerId))}
+          readOnly={readOnly}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      {status === "done" && (
+        <div className="rounded-xl border border-gold/30 bg-panel px-4 py-3 text-center">
+          <div className="font-display text-base text-gold-bright">
+            {wasEdit ? "Твій голос за цей матч" : "Дякуємо за голос!"}
+          </div>
+          <div className="text-xs text-muted mt-0.5">
+            Результат буде видно, коли голосування завершиться. Поки воно відкрите, оцінки можна змінити.
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatus("idle")}
+            className="mt-2 rounded-lg border border-gold/40 text-gold-bright px-4 py-1.5 text-xs hover:bg-panel-raised transition-colors duration-150"
+          >
+            Змінити голос
+          </button>
+        </div>
+      )}
+
+      {starters.length > 0 && (
+        <>
+          <div className="eyebrow mt-1">Стартовий склад</div>
+          {renderPosters(starters)}
+        </>
+      )}
+
+      {subs.length > 0 && (
+        <>
+          <div className="eyebrow mt-3">Заміни</div>
+          {renderPosters(subs)}
+        </>
+      )}
+
+      {(coach || referee) && (
+        <>
+          <div className="eyebrow mt-3">Тренер і суддя</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {coach && (
+              <StaffVotePoster
+                label="Тренер"
+                name={coach.name}
+                photoUrl={coach.photoUrl}
+                rating={coachRating}
+                onRate={(n) => !readOnly && setCoachRating(n)}
+                readOnly={readOnly}
+              />
+            )}
+            {referee && (
+              <StaffVotePoster
+                label="Суддя"
+                name={referee.name}
+                photoUrl={referee.photoUrl}
+                rating={refereeRating}
+                onRate={(n) => !readOnly && setRefereeRating(n)}
+                readOnly={readOnly}
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      {errorMsg && <div className="text-sm text-red-400">{errorMsg}</div>}
+
+      {!readOnly && (
+        <>
+          <button
+            type="button"
+            disabled={!allRated || status === "submitting"}
+            onClick={submit}
+            className="mt-1 rounded-xl bg-gold text-void font-display text-lg py-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity duration-150"
+          >
+            {status === "submitting" ? "Надсилаємо…" : initialVotes || wasEdit ? "Зберегти зміни" : "Надіслати голос"}
+          </button>
+          {!allRated && (
+            <p className="text-center text-[11px] text-muted -mt-1">
+              {mvpPlayerId == null
+                ? "Не забудь обрати MVP матчу (зірочка біля гравця) — і оціни всіх."
+                : "Онови оцінку кожного гравця, тренера й судді, щоб надіслати голос."}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
