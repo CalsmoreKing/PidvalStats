@@ -53,7 +53,7 @@ export default function VoterProfileClient({
 
   const histogram = useMemo(() => {
     const counts = new Array(10).fill(0);
-    for (const r of filtered) counts[Math.round(r.rating) - 1]++;
+    for (const r of filtered) counts[Math.min(10, Math.max(1, Math.floor(r.rating))) - 1]++;
     return counts.map((count, i) => ({ score: i + 1, count }));
   }, [filtered]);
   const maxHist = Math.max(1, ...histogram.map((h) => h.count));
@@ -78,7 +78,7 @@ export default function VoterProfileClient({
 
   const selectedDetail = useMemo(() => {
     if (selectedRating == null) return [];
-    return filtered.filter((r) => Math.round(r.rating) === selectedRating);
+    return filtered.filter((r) => Math.floor(r.rating) === selectedRating);
   }, [filtered, selectedRating]);
 
   const byMatch = useMemo(() => {

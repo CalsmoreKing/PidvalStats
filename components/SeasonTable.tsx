@@ -309,16 +309,16 @@ export default function SeasonTable({
       </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-xs sm:text-sm sm:min-w-[640px]">
           <thead>
             <tr className="bg-panel-raised text-muted eyebrow text-left">
-              <th className="px-5 py-3 font-normal">#</th>
-              <th className="px-5 py-3 font-normal">Гравець</th>
+              <th className="px-2 sm:px-5 py-3 font-normal">#</th>
+              <th className="px-2 sm:px-5 py-3 font-normal sticky left-0 bg-panel-raised">Гравець</th>
               {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => toggleSort(col.key)}
-                  className="px-5 py-3 font-normal text-right cursor-pointer select-none hover:text-gold-bright transition-colors duration-150"
+                  className="px-2 sm:px-5 py-3 font-normal text-right cursor-pointer select-none hover:text-gold-bright transition-colors duration-150"
                 >
                   {col.label}
                   {sortKey === col.key && (sortDir === "desc" ? " ↓" : " ↑")}
@@ -343,15 +343,15 @@ export default function SeasonTable({
                   className="bg-panel/80 hover:bg-transparent transition-colors duration-150 animate-row-in"
                   style={{ animationDelay: `${Math.min(i, 14) * 22}ms` }}
                 >
-                  <td className="px-5 py-4 font-display text-gold/50">{i + 1}</td>
-                  <td className="px-5 py-4 text-ivory">
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 font-display text-gold/50">{i + 1}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-ivory">
                     <Link href={`/players/${p.id}`} className="hover:text-gold-bright">
                       {p.full_name}
                     </Link>
                   </td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">{p.matches}</td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">{p.minutes}</td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.matches}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">
                     {/* Голи ВСЬОГО (разом з пенальті). Пенальті — маленька жовта
                         цифра внизу праворуч, як нижній індекс; position:absolute,
                         щоб не змінювати висоту рядка. */}
@@ -367,9 +367,9 @@ export default function SeasonTable({
                       )}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">{p.assists}</td>
-                  <td className="px-5 py-4 text-right font-utility text-muted">{p.votes}</td>
-                  <td className="px-5 py-4 text-right">
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.assists}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.votes}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right">
                     <span className="relative inline-flex">
                       {rc ? (
                         <span

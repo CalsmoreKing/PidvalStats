@@ -356,7 +356,9 @@ export async function getVoterStats(voterId: string) {
   for (const v of votes) {
     byPlayer[v.player_id] = byPlayer[v.player_id] ?? [];
     byPlayer[v.player_id].push(v.rating);
-    histCounts[v.rating] = (histCounts[v.rating] ?? 0) + 1;
+    // гістограма — по цілих балах: 5.5 потрапляє в «5», 9.5 — в «9»
+    const bucket = Math.min(10, Math.max(1, Math.floor(Number(v.rating))));
+    histCounts[bucket] = (histCounts[bucket] ?? 0) + 1;
   }
   const averaged = Object.entries(byPlayer).map(([playerId, ratings]) => ({
     playerId,
@@ -629,23 +631,36 @@ export async function getVoterActivity() {
 
 export async function getAwardData() {
   const supabase = createServiceClient();
-  const [{ data: settings }, { data: nominees }, { data: standings }, { data: activity }, { count: totalMatches }] =
+  const [{ data: settings }, { data: nominees }, { data: standings }, { data: site }, { data: special }] =
     await Promise.all([
       supabase.from("award_settings").select("*").eq("id", 1).maybeSingle(),
       supabase.from("award_nominees").select("*").order("sort_order").order("name"),
       supabase.rpc("award_standings"),
-      supabase.from("voter_activity").select("voter_id, matches_voted"),
-      supabase.from("matches").select("id", { count: "exact", head: true }).eq("status", "finalized").eq("is_cancelled", false),
+      supabase.rpc("award_site_progress"),
+      supabase.from("award_special").select("*").order("sort_order"),
     ]);
   const votes: Record<string, { points: number; first: number }> = {};
   for (const s of (standings ?? []) as any[]) votes[s.nominee_id] = { points: s.vote_points, first: s.first_places };
   const matchesVoted: Record<string, number> = {};
-  for (const a of (activity ?? []) as any[]) matchesVoted[a.voter_id] = Number(a.matches_voted);
+  let totalMatches = 0;
+  for (const a of (site ?? []) as any[]) {
+    matchesVoted[a.voter_id] = Number(a.matches_done);
+    totalMatches = Number(a.matches_total);
+  }
+  if (totalMatches === 0) {
+    const { count } = await supabase
+      .from("matches")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "finalized")
+      .eq("is_cancelled", false);
+    totalMatches = count ?? 0;
+  }
   return {
     settings: settings as any,
-    nominees: (nominees ?? []) as any[],
+    nominees: (nominees ?? []).map((n: any) => ({ ...n, base_points: Number(n.base_points) })) as any[],
     votes,
     matchesVoted,
-    totalMatches: totalMatches ?? 0,
+    totalMatches,
+    special: ((special ?? []) as any[]).map((x) => ({ ...x, stat_score: x.stat_score != null ? Number(x.stat_score) : null })),
   };
 }

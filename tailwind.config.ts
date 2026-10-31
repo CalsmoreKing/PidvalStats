@@ -17,8 +17,10 @@ const config: Config = {
           DEFAULT: "#D4AF37",
           bright: "#F3CC5C",
           soft: "#C9A876",
+          deep: "#8A6F22",
         },
         ivory: "#F2EDE3",
+        champagne: "#F5E6B8",
         muted: "#A99BC4",
       },
       fontFamily: {

@@ -21,6 +21,41 @@ export type VotablePlayer = {
   funFact?: string | null;
 };
 
+// Клік по оцінці: 5 → 5; ще раз по тій самій 5 → 5.5; ще раз → знову 5.
+// Для 10 півбалу немає (максимум 10).
+function nextRating(cur: number | undefined, n: number): number {
+  if (cur === n && n < 10) return n + 0.5;
+  return n;
+}
+
+function RatingRows({
+  rating,
+  onRate,
+  readOnly,
+}: {
+  rating: number | undefined;
+  onRate: (n: number) => void;
+  readOnly?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 mt-0.5">
+      {[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]].map((row, i) => (
+        <div key={i} className="grid grid-cols-5 gap-1">
+          {row.map((n) => (
+            <RateButton
+              key={n}
+              n={n}
+              value={rating}
+              onClick={() => onRate(nextRating(rating, n))}
+              readOnly={readOnly}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PlayerVotePoster({
   p,
   rating,
@@ -37,7 +72,7 @@ function PlayerVotePoster({
   readOnly?: boolean;
 }) {
   return (
-    <div className="relative aspect-[2/1] rounded-2xl overflow-hidden border border-white/5 bg-panel">
+    <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-panel">
       {p.nationality && (
         <div
           className="absolute -inset-6"
@@ -55,18 +90,18 @@ function PlayerVotePoster({
           між фото і кнопками, ледь торкається лівого краю */}
       <div className="absolute inset-0 bg-gradient-to-r from-panel/15 via-panel/70 to-panel/95" aria-hidden />
 
-      <div className="relative h-full flex items-stretch">
+      <div className="relative flex items-stretch min-h-[172px]">
         {/* Фото зліва — як на банері профілю */}
-        <div className="w-[36%] shrink-0 h-full flex items-end justify-center">
+        <div className="w-[36%] shrink-0 relative">
           {p.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={p.photoUrl}
               alt={p.name}
-              className="max-h-full w-auto object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 h-full max-w-full object-contain object-bottom drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center">
               <span className="font-display text-3xl text-ivory/20">{shortName(p.name)[0]}</span>
             </div>
           )}
@@ -131,18 +166,7 @@ function PlayerVotePoster({
             </div>
           )}
 
-          <div className="flex flex-col gap-1 mt-0.5">
-            <div className="grid grid-cols-5 gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
-              ))}
-            </div>
-            <div className="grid grid-cols-5 gap-1">
-              {[6, 7, 8, 9, 10].map((n) => (
-                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
-              ))}
-            </div>
-          </div>
+          <RatingRows rating={rating} onRate={onRate} readOnly={readOnly} />
         </div>
       </div>
     </div>
@@ -151,21 +175,24 @@ function PlayerVotePoster({
 
 function RateButton({
   n,
-  active,
+  value,
   onClick,
   readOnly,
 }: {
   n: number;
-  active: boolean;
+  value: number | undefined;
   onClick: () => void;
   readOnly?: boolean;
 }) {
+  const active = value != null && Math.floor(value) === n;
+  const half = active && value !== n;
   return (
     <button
       type="button"
       disabled={readOnly}
       onClick={onClick}
-      className={`h-7 rounded font-utility text-xs transition-colors duration-150 ${
+      aria-pressed={active}
+      className={`h-7 rounded font-utility transition-colors duration-150 ${half ? "text-[11px]" : "text-xs"} ${
         active
           ? "bg-gold text-void font-bold"
           : readOnly
@@ -173,7 +200,7 @@ function RateButton({
           : "bg-panel-raised text-muted hover:text-ivory"
       }`}
     >
-      {n}
+      {half ? `${n}.5` : n}
     </button>
   );
 }
@@ -194,14 +221,14 @@ function StaffVotePoster({
   readOnly?: boolean;
 }) {
   return (
-    <div className="relative aspect-[2/1] rounded-2xl overflow-hidden border border-white/5 bg-panel">
-      <div className="relative h-full flex items-stretch">
-        <div className="w-[36%] shrink-0 h-full flex items-end justify-center bg-panel-raised/40">
+    <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-panel">
+      <div className="relative flex items-stretch min-h-[172px]">
+        <div className="w-[36%] shrink-0 relative bg-panel-raised/40">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={name} className="max-h-full w-auto object-contain object-bottom" />
+            <img src={photoUrl} alt={name} className="absolute bottom-0 left-1/2 -translate-x-1/2 h-full max-w-full object-contain object-bottom" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center">
               <span className="font-display text-3xl text-ivory/20">{name[0]}</span>
             </div>
           )}
@@ -212,18 +239,7 @@ function StaffVotePoster({
             <span className="eyebrow mr-1.5">{label}</span>
             {name}
           </div>
-          <div className="flex flex-col gap-1 mt-0.5">
-            <div className="grid grid-cols-5 gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
-              ))}
-            </div>
-            <div className="grid grid-cols-5 gap-1">
-              {[6, 7, 8, 9, 10].map((n) => (
-                <RateButton key={n} n={n} active={rating === n} onClick={() => onRate(n)} readOnly={readOnly} />
-              ))}
-            </div>
-          </div>
+          <RatingRows rating={rating} onRate={onRate} readOnly={readOnly} />
         </div>
       </div>
     </div>
@@ -340,6 +356,11 @@ export default function VotingForm({
       {starters.length > 0 && (
         <>
           <div className="eyebrow mt-1">Стартовий склад</div>
+          {!readOnly && (
+            <p className="text-[11px] text-muted -mt-1">
+              Хочеш точніше? Натисни на обрану оцінку ще раз — вона стане з половинкою (наприклад, 5 → 5.5).
+            </p>
+          )}
           {renderPosters(starters)}
         </>
       )}

@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getVoterIdFromCookie } from "@/lib/supabase/authed";
 import { createServiceClient } from "@/lib/supabase/service";
 
+// Оцінка 1–10 із кроком 0.5 (5, 5.5, 6 …)
+const validRating = (n: unknown) =>
+  typeof n === "number" && Number.isFinite(n) && n >= 1 && n <= 10 && Number.isInteger(n * 2);
+
 export async function POST(req: NextRequest) {
   const voterId = getVoterIdFromCookie();
   if (!voterId) {
@@ -16,17 +20,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Некоректні дані голосу" }, { status: 400 });
   }
   for (const r of ratings) {
-    if (!r.playerId || !Number.isInteger(r.rating) || r.rating < 1 || r.rating > 10) {
+    if (!r.playerId || !validRating(r.rating)) {
       return NextResponse.json({ error: "Некоректна оцінка" }, { status: 400 });
     }
   }
   if (coachRating !== undefined && coachRating !== null) {
-    if (!Number.isInteger(coachRating) || coachRating < 1 || coachRating > 10) {
+    if (!validRating(coachRating)) {
       return NextResponse.json({ error: "Некоректна оцінка тренера" }, { status: 400 });
     }
   }
   if (refereeRating !== undefined && refereeRating !== null) {
-    if (!Number.isInteger(refereeRating) || refereeRating < 1 || refereeRating > 10) {
+    if (!validRating(refereeRating)) {
       return NextResponse.json({ error: "Некоректна оцінка судді" }, { status: 400 });
     }
   }

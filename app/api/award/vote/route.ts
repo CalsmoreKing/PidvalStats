@@ -19,19 +19,21 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const [{ data: settings }, { data: voter }, { data: nominees }, { data: act }] = await Promise.all([
+  const [{ data: settings }, { data: voter }, { data: nominees }, { data: site }, { data: priv }] = await Promise.all([
     supabase.from("award_settings").select("*").eq("id", 1).maybeSingle(),
-    supabase.from("voters").select("id, display_name, custom_display_name, telegram_username, created_at").eq("id", voterId).maybeSingle(),
+    supabase.from("voters").select("id, display_name, custom_display_name, telegram_username, telegram_id, created_at").eq("id", voterId).maybeSingle(),
     supabase.from("award_nominees").select("id, name, voter_id, is_active").in("id", picks),
-    supabase.from("voter_activity").select("matches_voted").eq("voter_id", voterId).maybeSingle(),
+    supabase.rpc("award_site_progress"),
+    supabase.from("award_nominee_private").select("nominee_id, telegram_id").in("nominee_id", picks),
   ]);
   if (!settings || !voter) return NextResponse.json({ error: "Акаунт не знайдено" }, { status: 404 });
   if (!votingIsOpen(settings)) return NextResponse.json({ error: "Голосування зараз закрите" }, { status: 403 });
 
+  const matchesDone = Number(((site ?? []) as any[]).find((a) => a.voter_id === voterId)?.matches_done ?? 0);
   if (settings.registered_before && new Date(voter.created_at) > new Date(settings.registered_before)) {
     return NextResponse.json({ error: "Акаунти, створені після початку нагороди, не голосують" }, { status: 403 });
   }
-  if ((act?.matches_voted ?? 0) < settings.min_matches_voted) {
+  if (matchesDone < settings.min_matches_voted) {
     return NextResponse.json(
       { error: `Щоб голосувати, оціни хоча б ${settings.min_matches_voted} матч(ів) на сайті` },
       { status: 403 }
@@ -40,6 +42,12 @@ export async function POST(req: NextRequest) {
 
   if (!nominees || nominees.length !== 5 || nominees.some((n: any) => !n.is_active)) {
     return NextResponse.json({ error: "Серед обраних є недійсний номінант" }, { status: 400 });
+  }
+  // Свій Telegram ID збігається з прихованим ID номінанта — це «за себе»,
+  // навіть якщо акаунт ще не прив'язано і ім'я написано інакше.
+  const myTg = voter.telegram_id != null ? String(voter.telegram_id).replace(/^user/i, "") : null;
+  if (myTg && ((priv ?? []) as any[]).some((r) => String(r.telegram_id).replace(/^user/i, "") === myTg)) {
+    return NextResponse.json({ error: "За себе голосувати не можна" }, { status: 400 });
   }
   const names = [voter.display_name, voter.custom_display_name, voter.telegram_username];
   if (nominees.some((n: any) => isSelfVote(n, { id: voter.id, names }))) {

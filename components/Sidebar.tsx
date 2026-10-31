@@ -10,7 +10,7 @@ const items = [
   { href: "/season", label: "Сезон", hint: "Таблиця" },
   { href: "/voters", label: "Фанати", hint: "Хто як голосує" },
   { href: "/manager", label: "Менеджер", hint: "В обробці" },
-  { href: "/social", label: "Соц Мережа", hint: "Підвал Д'ор" },
+  { href: "/social", label: "Підвал д'Ор", hint: "Нагорода каналу" },
   { href: "/credits", label: "Контакт", hint: "Хто робить сайт" },
 ];
 

@@ -50,8 +50,8 @@ export default function AwardVoteForm({
   return (
     <div className="flex flex-col gap-4">
       {locked && (
-        <div className="rounded-xl border border-gold/30 bg-panel px-4 py-3 text-center">
-          <div className="font-display text-gold-bright">Твій голос враховано</div>
+        <div className="gold-frame rounded-2xl px-4 py-4 text-center">
+          <div className="font-display text-xl text-gold-bright">Твій голос враховано</div>
           <div className="text-xs text-muted mt-0.5">Поки голосування відкрите, його можна змінити.</div>
           <button
             onClick={() => setStatus("idle")}
@@ -62,7 +62,7 @@ export default function AwardVoteForm({
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
         {PLACE_POINTS.map((pts, i) => {
           const n = picks[i] ? byId.get(picks[i]) : null;
           return (
@@ -72,12 +72,12 @@ export default function AwardVoteForm({
               disabled={!n || locked}
               onClick={() => n && toggle(n.id)}
               className={`rounded-xl border px-2 py-3 text-center min-h-[84px] flex flex-col items-center justify-center gap-1 transition-colors duration-150 ${
-                n ? "border-gold/40 bg-panel-raised" : "border-dashed border-white/10 bg-panel/50"
+                n ? "gold-frame" : "border-dashed border-gold/20 bg-panel/40"
               }`}
             >
-              <span className="font-display text-xl text-gold-bright">{i + 1}</span>
+              <span className="gold-text font-display font-black text-3xl leading-none">{i + 1}</span>
               <span className="text-[10px] text-muted">{pts} б.</span>
-              <span className="text-[11px] text-ivory leading-tight break-words">{n?.name ?? "—"}</span>
+              <span className="text-[10px] sm:text-[11px] text-ivory leading-tight break-words max-w-full">{n?.name ?? "—"}</span>
             </button>
           );
         })}
@@ -103,7 +103,7 @@ export default function AwardVoteForm({
             >
               <span
                 className={`h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${
-                  place >= 0 ? "bg-gold text-void" : "bg-panel-raised text-muted"
+                  place >= 0 ? "bg-gradient-to-br from-[#fff1b0] to-[#b88a1c] text-void" : "bg-panel-raised text-muted"
                 }`}
               >
                 {place >= 0 ? place + 1 : ""}
@@ -120,7 +120,7 @@ export default function AwardVoteForm({
         <button
           disabled={picks.length !== 5 || status === "saving"}
           onClick={submit}
-          className="rounded-xl bg-gold text-void font-display text-lg py-3 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="rounded-xl bg-gradient-to-r from-[#b88a1c] via-[#f3cc5c] to-[#b88a1c] text-void font-display font-bold text-lg py-3 disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_8px_24px_-8px_rgba(212,175,55,0.6)]"
         >
           {status === "saving" ? "Надсилаємо…" : picks.length === 5 ? "Надіслати голос" : `Обери ще ${5 - picks.length}`}
         </button>
