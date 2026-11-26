@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ratingColor } from "@/lib/display";
 import { POSITION_GROUPS, PositionGroup, positionGroup } from "@/lib/positions";
-import { MIN_MINUTES_FOR_RATING, bayesRating, teamMean, TEAM_MEAN_FALLBACK } from "@/lib/season";
+import { MIN_MINUTES_FOR_RATING, MIN_MATCHES_FOR_RANK, qualifiesForRank } from "@/lib/season";
 
 // Один рядок = гравець в одному матчі (view season_player_matches). Усі
 // фільтри (турнір, місяць, позиція, старт/заміна) рахуються тут, з сирих
@@ -25,14 +25,24 @@ export type MatchRow = {
   rating: number | null; // середня оцінка фанатів за цей матч
 };
 
-type SortKey = "matches" | "goals" | "assists" | "votes" | "minutes" | "minutes_pct" | "season_rating";
+type SortKey =
+  | "matches"
+  | "goals"
+  | "assists"
+  | "votes"
+  | "minutes"
+  | "minutes_pct"
+  | "minutes_avg"
+  | "season_rating";
 
-const columns: { key: SortKey; label: string }[] = [
-  { key: "matches", label: "Матчі" },
+// link — необов'язковий підпис-уточнення дрібним шрифтом під заголовком
+const columns: { key: SortKey; label: string; hint?: string; accent?: boolean }[] = [
+  { key: "matches", label: "Матчі", accent: true },
   { key: "minutes", label: "Хвилини" },
-  { key: "minutes_pct", label: "% хвилин" },
-  { key: "goals", label: "Голи" },
-  { key: "assists", label: "Асисти" },
+  { key: "minutes_pct", label: "% сезону", hint: "% усіх хвилин" },
+  { key: "minutes_avg", label: "Хв/матч" },
+  { key: "goals", label: "Голи", accent: true },
+  { key: "assists", label: "Асисти", accent: true },
   { key: "votes", label: "Голоси" },
   { key: "season_rating", label: "Рейтинг" },
 ];
@@ -142,7 +152,6 @@ export default function SeasonTable({
       cur.votes += r.votes;
       cur.minutes += r.minutes;
       if (!r.isStarting) cur.subMinutes += r.minutes;
-      // «% хвилин» — скільки з можарйтих хвилин гравець реально відіграв.
       cur.all.apps += 1;
       if (r.isStarting) cur.start.apps += 1;
       else cur.sub.apps += 1;
@@ -156,7 +165,20 @@ export default function SeasonTable({
       }
       acc.set(r.id, cur);
     }
-    const list = Array.from(acc.entries()).map(([id, v]) => ({
+    // Хвилини ВСІЄЇ команди в обраному зрізі: сума по всіх матчах, які є в
+    // rows (з трьох джерел — старт, заміни, виходи на заміну). Ділити на це
+    // й означає «частка від усіх хвилин сезону».
+    const teamMinutes = rows.reduce(
+      (sum, r) =>
+        checked.has(r.competitionSlug) &&
+        (activeMonths.size === 0 || activeMonths.has(r.month)) &&
+        (groups.size === 0 || groups.has(positionGroup(r.position) as PositionGroup))
+          ? sum + r.minutes
+          : sum,
+      0
+    );
+
+    return Array.from(acc.entries()).map(([id, v]) => ({
       id,
       full_name: v.name,
       matches: v.matches,
@@ -167,42 +189,18 @@ export default function SeasonTable({
       votes: v.votes,
       minutes: v.minutes,
       subMinutes: v.subMinutes,
-      // % відіграних хвилин: сума хвилин / (виходи × 90).
-      minutes_pct: v.all.apps > 0 ? Math.round((v.minutes / (v.all.apps * 90)) * 100) : 0,
+      // % сезону — скільки з УСІХ хвилин команди в цьому зрізі відіграв гравець.
+      minutes_pct: teamMinutes > 0 ? Math.round((v.minutes / teamMinutes) * 1000) / 10 : 0,
+      // Хв/матч — середнє навантаження за кожен вихід.
+      minutes_avg: v.all.apps > 0 ? Math.round(v.minutes / v.all.apps) : 0,
       ratingStart: avg(v.start),
       ratingSub: avg(v.sub),
       ratingAll: avg(v.all),
-      // скільки зіграних матчів пішло в оцінку — для Байєса
-      counted: v.all.minutes > 0 ? v.all.minutes : 0,
-      countedMatches: v.all.apps > 0 ? v.all.apps : 0,
+      // Чи має гравець право на місце в рейтингу (достатньо залікових матчів).
+      qualified: qualifiesForRank(v.matches, v.minutes),
+      // Велика зірка: чесне середнє зі своїх матчів (або старт в окремому режимі).
+      season_rating: combine ? avg(v.all) : avg(v.start),
     }));
-
-    // Байєсівське згладжування: (n·mean + k·teamMean) / (n + k).
-    const mean = teamMean(list.map((r) => ({ matches: r.matches, rating: r.ratingAll })));
-    const tm = Number.isFinite(mean) ? mean : TEAM_MEAN_FALLBACK;
-
-    return list.map((r) => {
-      const smoothed = r.ratingAll != null
-        ? Math.round(bayesRating(r.matches, r.ratingAll, tm)! * 10) / 10
-        : null;
-      return {
-        id: r.id,
-        full_name: r.full_name,
-        matches: r.matches,
-        starts: r.starts,
-        goals: r.goals,
-        penaltyGoals: r.penaltyGoals,
-        assists: r.assists,
-        votes: r.votes,
-        minutes: r.minutes,
-        subMinutes: r.subMinutes,
-        minutes_pct: r.minutes_pct,
-        ratingStart: r.ratingStart,
-        ratingSub: r.ratingSub,
-        // Велика зірка: згладжена сумарна оцінка, або (окремий режим) старт.
-        season_rating: combine ? smoothed : r.ratingStart,
-      };
-    });
   }, [rows, checked, activeMonths, groups, combine]);
 
   function toggleSort(key: SortKey) {
@@ -214,13 +212,33 @@ export default function SeasonTable({
     }
   }
 
+  // Сортування + правило рейтингу: коли сортуємо саме за оцінкою, гравці без
+  // достатньої кількості залікових матчів завжди йдуть під рештою — навіть
+  // з високим середнім (один вдалий вихід не робить гравця топом сезону).
   const sorted = useMemo(() => {
     const copy = [...displayRows];
     const val = (r: (typeof copy)[number]) =>
       sortKey === "season_rating" ? r.season_rating ?? (combine ? -1 : r.ratingSub ?? -1) : Number(r[sortKey] ?? 0);
-    copy.sort((a, b) => (sortDir === "desc" ? val(b) - val(a) : val(a) - val(b)));
+    copy.sort((a, b) => {
+      if (sortKey === "season_rating" && a.qualified !== b.qualified) {
+        return a.qualified ? -1 : 1;
+      }
+      return sortDir === "desc" ? val(b) - val(a) : val(a) - val(b);
+    });
     return copy;
   }, [displayRows, sortKey, sortDir, combine]);
+
+  // Місце в рейтингу рахуємо лише серед тих, хто пройшов поріг.
+  const rankOf = useMemo(() => {
+    const map = new Map<string, number>();
+    if (sortKey !== "season_rating" || sortDir !== "desc") return map;
+    let place = 0;
+    for (const r of sorted) {
+      if (!r.qualified) break;
+      map.set(r.id, ++place);
+    }
+    return map;
+  }, [sorted, sortKey, sortDir]);
 
   // Змінюється при кожній зміні фільтрів → <tbody> перемонтовується, і рядки
   // плавно «вїжджають» знову (анімований перехід між виглядами таблиці).
@@ -338,17 +356,12 @@ export default function SeasonTable({
           </div>
         )}
 
-        {!combine && (
-          <p className="text-[11px] text-muted -mt-1">
-            Велика зірка — оцінка зі стартового складу, мала в кутку — оцінка, коли гравець виходив із лавки.
-            Голи, асисти й хвилини рахуються разом.
-          </p>
-        )}
-        {combine && (
-          <p className="text-[11px] text-muted -mt-1">
-            Рейтинг — згладжена оцінка (Байєс, k=6) лише з матчів від {MIN_MINUTES_FOR_RATING} хвилин.
-          </p>
-        )}
+        <p className="text-[11px] text-muted -mt-1 leading-relaxed">
+          Рейтинг — середня оцінка фанатів за матчі, в яких гравець відіграв {MIN_MINUTES_FOR_RATING}+ хвилин.
+          Матч на 90 хвилин важить більше, ніж вихід на 25. Місце в рейтингу отримує той, у кого таких
+          матчів {MIN_MATCHES_FOR_RANK}+ — тому один вдалий вихід не піднімає вище за основу.
+          {!combine && " Велика зірка — оцінка зі старту, мала в кутку — із замін."}
+        </p>
       </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
@@ -361,9 +374,18 @@ export default function SeasonTable({
                 <th
                   key={col.key}
                   onClick={() => toggleSort(col.key)}
-                  className="px-2 sm:px-5 py-3 font-normal text-right cursor-pointer select-none hover:text-gold-bright transition-colors duration-150"
+                  className={`px-2 sm:px-5 py-3 font-normal text-right cursor-pointer select-none hover:text-gold-bright transition-colors duration-150 ${
+                    col.accent ? "text-gold-bright" : ""
+                  }`}
                 >
-                  {col.label}
+                  <span className="inline-flex flex-col items-end leading-tight">
+                    <span>{col.label}</span>
+                    {col.hint && (
+                      <span className="text-[9px] normal-case tracking-normal text-muted/60 font-normal">
+                        {col.hint}
+                      </span>
+                    )}
+                  </span>
                   {sortKey === col.key && (sortDir === "desc" ? " ↓" : " ↑")}
                 </th>
               ))}
@@ -372,7 +394,7 @@ export default function SeasonTable({
           <tbody key={filterSig} className="divide-y divide-white/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-6 text-center text-muted">
+                <td colSpan={10} className="px-5 py-6 text-center text-muted">
                   {checked.size === 0 ? "Обери хоча б один турнір." : "Немає даних для обраних фільтрів."}
                 </td>
               </tr>
@@ -380,19 +402,25 @@ export default function SeasonTable({
             {sorted.map((p, i) => {
               const rc = p.season_rating != null ? ratingColor(p.season_rating) : null;
               const rs = !combine && p.ratingSub != null ? ratingColor(p.ratingSub) : null;
+              const place = rankOf.get(p.id) ?? i + 1;
+              const muted = sortKey === "season_rating" && sortDir === "desc" && !p.qualified;
               return (
                 <tr
                   key={p.id}
-                  className="bg-panel/80 hover:bg-transparent transition-colors duration-150 animate-row-in"
+                  className={`bg-panel/80 hover:bg-transparent transition-colors duration-150 animate-row-in ${
+                    muted ? "opacity-60" : ""
+                  }`}
                   style={{ animationDelay: `${Math.min(i, 14) * 22}ms` }}
                 >
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 font-display text-gold/50">{i + 1}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 font-display text-gold/50">
+                    {sortKey === "season_rating" && sortDir === "desc" && !p.qualified ? "—" : place}
+                  </td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-ivory">
                     <Link href={`/players/${p.id}`} className="hover:text-gold-bright">
                       {p.full_name}
                     </Link>
                   </td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.matches}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-gold/80">{p.matches}</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">
                     {/* Хвилини ВСЬОГО; хвилини із замін — маленька жовта цифра
                         справа, як у Голах. Без title: не має бути ховера. */}
@@ -406,7 +434,8 @@ export default function SeasonTable({
                     </span>
                   </td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes_pct}%</td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes_avg}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-gold/80">
                     {/* Голи ВСЬОГО (разом з пенальті). Пенальті — маленька жовта
                         цифра внизу праворуч, як нижній індекс; position:absolute,
                         щоб не змінювати висоту рядка. */}
@@ -419,7 +448,7 @@ export default function SeasonTable({
                       )}
                     </span>
                   </td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.assists}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-gold/80">{p.assists}</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.votes}</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right">
                     <span className="relative inline-flex">

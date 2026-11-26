@@ -1,4 +1,5 @@
 import SeasonTable, { MatchRow } from "@/components/SeasonTable";
+import { MIN_MINUTES_FOR_RATING, MIN_MATCHES_FOR_RANK } from "@/lib/season";
 import RatingList from "@/components/RatingList";
 import {
   getSeasonPlayerMatches,
@@ -8,7 +9,10 @@ import {
   getFirstTeam,
 } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
+// Сторінка кешується на 60 с: дані міняються тільки після закриття
+// голосування, тож смикати Supabase на кожен захід немає сенсу. Після
+// підрахунку матчу кеш скидається через revalidatePath у close-voting.
+export const revalidate = 60;
 
 export default async function SeasonPage() {
   const [raw, competitions, refereeRatings, coachRatings, team] = await Promise.all([
@@ -41,6 +45,14 @@ export default async function SeasonPage() {
     <div className="px-4 md:px-12 py-8 max-w-6xl mx-auto">
       <div className="eyebrow mb-3">Підсумки</div>
       <h1 className="font-display text-4xl text-ivory mb-8">Сезон 26/27</h1>
+      <p className="text-xs text-muted mb-6 max-w-2xl leading-relaxed">
+        Оцінка гравця — середнє з матчів, у яких він відіграв {MIN_MINUTES_FOR_RATING}+ хвилин
+        (матч на 90 хв важить більше, ніж вихід на 25). Місце в рейтингу отримує
+        лише той, у кого таких матчів {MIN_MATCHES_FOR_RANK}+ — тому один вдалий вихід
+        не піднімає вище за гравця основи. Гравці без порогу показані тьмяними,
+        без місця.
+      </p>
+
       {rows.length === 0 ? (
         <p className="text-sm text-muted">
           Ще немає жодного підсумованого матчу — таблиця заповниться після

@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { DATA_TAGS } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAdminInfo } from "@/lib/admin";
 
@@ -49,6 +51,8 @@ export async function POST(req: NextRequest) {
     // пенальті ніколи не може бути більше за голи (CHECK у БД, міграція 031).
     const goals = Math.max(0, Math.floor(r.goals ?? 0));
     const penaltyGoals = Math.min(goals, Math.max(0, Math.floor(r.penaltyGoals ?? 0)));
+    // Гравець зі старту без хвилини виходу — це не заміна, а повний матч.
+    const hasSub = !r.isStarting && r.subInMinute != null && Number(r.subInMinute) > 0;
     return {
     match_id: matchId,
     player_id: r.playerId,
@@ -60,11 +64,14 @@ export async function POST(req: NextRequest) {
     assists: r.assists ?? 0,
     yellow_cards: r.yellowCards ?? 0,
     red_cards: r.redCards ?? 0,
-    sub_in_minute: r.subInMinute ?? null,
+    // Заміна існує тільки як пара «хто зайшов на якій хвилині / хто пішов».
+    // Якщо хвилини немає — чистимо всю пару, інакше в БД лишався «висячий»
+    // sub_out_minute без заміни (і на полі зʼявлялась зайва шоста заміна).
+    sub_in_minute: hasSub ? r.subInMinute ?? null : null,
     fun_fact: r.funFact ?? null,
-    sub_out_minute: r.subOutMinute ?? null,
+    sub_out_minute: hasSub ? r.subOutMinute ?? null : null,
     formation_slot: r.formationSlot ?? null,
-    sub_for_player_id: r.subForPlayerId || null,
+    sub_for_player_id: hasSub ? r.subForPlayerId || null : null,
     penalty_goals: penaltyGoals,
     };
   });
@@ -88,5 +95,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, warning: "Склад збережено, але прибирання старих рядків не вдалось" });
   }
 
+  // Склад впливає на схему матчу, профілі й сезонну статистику.
+  revalidateTag(DATA_TAGS.lineups);
+  revalidateTag(DATA_TAGS.matches);
+  revalidateTag(DATA_TAGS.season);
+  revalidateTag(DATA_TAGS.players);
   return NextResponse.json({ ok: true });
 }

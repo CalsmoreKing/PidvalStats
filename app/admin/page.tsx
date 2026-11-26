@@ -68,7 +68,24 @@ export default async function AdminPage() {
     .select("id, voter_id, is_valid, created_at")
     .order("created_at", { ascending: false });
 
+  // Найближчий майбутній матч — завжди перший у списку (з нього найчастіше
+  // працюють: внести склад, відкрити голосування). Решта — від новіших.
+  const nowTs = Date.now();
+  const orderedMatches = [...matches].sort((a: any, b: any) => {
+    const aNext = a.status === "scheduled" && !a.is_cancelled && new Date(a.match_date).getTime() > nowTs;
+    const bNext = b.status === "scheduled" && !b.is_cancelled && new Date(b.match_date).getTime() > nowTs;
+    if (aNext && bNext) return +new Date(a.match_date) - +new Date(b.match_date);
+    if (aNext) return -1;
+    if (bNext) return 1;
+    return +new Date(b.match_date) - +new Date(a.match_date);
+  });
+  const nextUpcomingId = orderedMatches.find(
+    (m: any) => m.status === "scheduled" && !m.is_cancelled && new Date(m.match_date).getTime() > nowTs
+  )?.id;
+
   const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
+  const lineupsByMatch = new Map<string, any>();
+  matches.forEach((m: any, i: number) => lineupsByMatch.set(m.id, lineups[i]));
 
   const matchesContent = (
     <>
@@ -80,8 +97,17 @@ export default async function AdminPage() {
         <h2 className="font-display text-xl text-ivory mb-4">Матчі</h2>
         <div className="flex flex-col gap-3">
           {matches.length === 0 && <p className="text-sm text-muted">Матчів ще немає.</p>}
-          {matches.map((m: any, i: number) => (
-            <MatchAdminRow key={m.id} match={m} roster={roster} existingLineup={lineups[i]} competitions={competitions} referees={referees} coaches={coaches} />
+          {orderedMatches.map((m: any) => (
+            <MatchAdminRow
+              key={m.id}
+              match={m}
+              roster={roster}
+              existingLineup={lineupsByMatch.get(m.id)}
+              competitions={competitions}
+              referees={referees}
+              coaches={coaches}
+              defaultOpen={m.id === nextUpcomingId}
+            />
           ))}
         </div>
       </section>

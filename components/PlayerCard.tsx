@@ -3,6 +3,18 @@ import { calcAge } from "@/lib/age";
 import { ratingColor } from "@/lib/display";
 import { flagUrl } from "@/lib/flags";
 
+// «Г+П» — голи + передачі (асисти). На картці це маленький затемнений
+// овальний бейдж під іменем і позицією: одразу видно внесок у результат.
+function assistGoalBadge(goals: number, assists: number) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-black/45 border border-white/10 px-2 py-[3px] text-[10px] font-utility text-ivory/85 backdrop-blur-sm">
+      <span className="text-gold-bright font-semibold">{goals}</span>
+      <span className="text-muted/80">+</span>
+      <span className="text-gold-bright font-semibold">{assists}</span>
+    </span>
+  );
+}
+
 export type PlayerCardData = {
   id: string;
   full_name: string;
@@ -12,6 +24,8 @@ export type PlayerCardData = {
   jersey_number: number | null;
   photo_url: string | null; // очікується PNG з прозорим фоном (вирізаний портрет)
   season_rating?: number | null;
+  goals?: number;
+  assists?: number;
 };
 
 // Великий банер гравця, ~2:1 — прапор національності на весь банер
@@ -62,6 +76,9 @@ export default function PlayerCard({ player }: { player: PlayerCardData }) {
               <span className="eyebrow">{player.position}</span>
               <span className="text-xs text-muted">{age} років</span>
             </div>
+            {player.goals != null && player.assists != null && (
+              <div className="mt-2">{assistGoalBadge(player.goals, player.assists)}</div>
+            )}
           </div>
         </div>
       </div>

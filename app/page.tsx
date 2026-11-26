@@ -11,7 +11,10 @@ import {
 import { ratingColor } from "@/lib/display";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+// Кеш 60 с: головна показує підсумки, які змінюються лише після закриття
+// голосування (там же й revalidatePath). Без цього кожен захід робив
+// десяток запитів до Supabase — це й було головне «гальмо» сайту.
+export const revalidate = 60;
 
 // Фіксовані розміри топів на головній
 const TOP_MATCHES = 4;
@@ -39,6 +42,8 @@ export default async function CampNouPage() {
     jersey_number: p.jersey_number,
     photo_url: p.photo_url,
     season_rating: p.weighted_season_rating,
+    goals: p.goals ?? 0,
+    assists: p.assists ?? 0,
   });
   const topPlayers: PlayerCardData[] = topPlayersRaw.map(mapPlayer);
   const bottomPlayers: PlayerCardData[] = bottomPlayersRaw.map(mapPlayer);
@@ -79,7 +84,7 @@ export default async function CampNouPage() {
                         <div className="text-sm text-ivory truncate leading-tight">{v.display_name}</div>
                         <div className="text-[11px] text-muted leading-tight">
                           {v.matches_voted} {v.matches_voted === 1 ? "матч" : "матчів"}
-                          {avg != null && <span className="text-muted/70"> · сер. оцінка</span>}
+                          {v.mvp_matches > 0 && <span className="text-muted/70"> · {v.mvp_matches}× МВП</span>}
                         </div>
                       </div>
                       {avg != null && rc && (

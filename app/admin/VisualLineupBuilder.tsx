@@ -89,9 +89,13 @@ export default function VisualLineupBuilder({
     setShowAllForSlot(false);
   }
 
+  // Прибираємо заміну зі складу — разом із її хвилиною і ↓ у партнера.
   function toggleSub(playerId: string) {
     if (subIds.includes(playerId)) {
       setSubIds(subIds.filter((id) => id !== playerId));
+      const partner = details[playerId]?.subForPlayerId;
+      if (partner) setDetail(partner, { subOutMinute: "" });
+      setDetail(playerId, { subInMinute: "", subForPlayerId: "" });
     } else {
       setSubIds([...subIds, playerId]);
     }
@@ -147,11 +151,29 @@ export default function VisualLineupBuilder({
     }
   }
 
+  // Хвилина заміни — єдине джерело правди. Зняли хвилину → заміна
+  // перестає існувати цілком: прибираємо і «замість кого», і ↓ у гравця,
+  // який ішов з поля. Раніше в базі лишався sub_out_minute без пари, і
+  // виходила «шоста заміна» при п'яти фактичних.
+  // Позначили «замість кого», але хвилини ще немає — ставимо дефолтну 60,
+  // щоб не змушувати заповнювати два поля заради однієї заміни.
+  function pickPartner(subPlayerId: string, forPlayerId: string) {
+    const cur = details[subPlayerId]?.subInMinute ?? "";
+    const minute = cur !== "" ? cur : forPlayerId ? "60" : "";
+    setSubPairing(subPlayerId, forPlayerId, minute);
+  }
+
   function setSubPairing(subPlayerId: string, forPlayerId: string, minute: string) {
     const m = clampMinute(minute);
-    setDetail(subPlayerId, { subForPlayerId: forPlayerId, subInMinute: m });
-    if (forPlayerId) {
+    const hasMinute = m !== "";
+    setDetail(subPlayerId, {
+      subForPlayerId: hasMinute ? forPlayerId : "",
+      subInMinute: m,
+    });
+    if (forPlayerId && hasMinute) {
       setDetail(forPlayerId, { subOutMinute: m });
+    } else if (forPlayerId) {
+      setDetail(forPlayerId, { subOutMinute: "" });
     }
   }
 
@@ -334,7 +356,7 @@ export default function VisualLineupBuilder({
                 <span className="text-muted">замість</span>
                 <select
                   value={d.subForPlayerId}
-                  onChange={(e) => setSubPairing(subId, e.target.value, d.subInMinute)}
+                  onChange={(e) => pickPartner(subId, e.target.value)}
                   className="bg-panel-raised rounded px-1.5 py-1 text-ivory"
                 >
                   <option value="">— обери —</option>
@@ -361,15 +383,30 @@ export default function VisualLineupBuilder({
                   />
                   Показати всіх
                 </label>
+                {[46, 60, 70, 80].map((mm) => (
+                  <button
+                    key={mm}
+                    type="button"
+                    onClick={() => setSubPairing(subId, d.subForPlayerId, String(mm))}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-utility ${
+                      d.subInMinute === String(mm)
+                        ? "bg-gold/30 text-gold-bright ring-1 ring-gold/50"
+                        : "bg-panel-raised text-muted hover:text-ivory"
+                    }`}
+                  >
+                    {mm}&apos;
+                  </button>
+                ))}
                 <span className="text-muted">на</span>
                 <input
-                  type="number"
-                  min={0}
-                  max={90}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={3}
                   placeholder="хв"
                   value={d.subInMinute}
-                  onChange={(e) => setSubPairing(subId, d.subForPlayerId, e.target.value)}
-                  className="w-12 bg-panel-raised rounded px-1.5 py-1 text-ivory"
+                  onChange={(e) => setSubPairing(subId, d.subForPlayerId, e.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-12 bg-panel-raised rounded px-2 py-1 text-ivory text-center font-utility tabular-nums"
                 />
                 хвилині
               </div>

@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { DATA_TAGS } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAdminInfo } from "@/lib/admin";
 
@@ -101,6 +103,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidateTag(DATA_TAGS.matches);
+  revalidateTag(DATA_TAGS.staff);
+  revalidateTag(DATA_TAGS.season);
   return NextResponse.json({ ok: true });
 }
 
@@ -117,5 +122,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidateTag(DATA_TAGS.matches);
+  revalidateTag(DATA_TAGS.lineups);
+  revalidateTag(DATA_TAGS.season);
   return NextResponse.json({ ok: true });
 }

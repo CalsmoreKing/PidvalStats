@@ -1,17 +1,21 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { bayesRating, teamMean, TEAM_MEAN_FALLBACK } from "@/lib/season";
+import { qualifiesForRank, weightedMean } from "@/lib/season";
+import { FORMATION_SLOTS } from "@/lib/formationSlots";
 
 async function getFirstTeamId(supabase: ReturnType<typeof createServerSupabase>) {
   const { data } = await supabase.from("teams").select("id").eq("slug", "first_team").single();
   return data?.id as string | undefined;
 }
 
-// Згладжена оцінка гравця для головної/рейтингу: так само, як у /season —
-// (n·mean + k·teamMean) / (n + k), лише матчі від 25 хв (обрізано у view).
-async function smoothedRatings(
+// Оцінка гравця для головної/рейтингу: чесне середнє з матчів від 25 хв,
+// зважене на хвилини (джерело — view season_stats_by_competition, тому
+// товариські не враховуються). У рейтинг потрапляють лише ті, хто набрав
+// MIN_MATCHES_FOR_RANK залікових матчів — інакше один вдалий вихід з лавки
+// переважував би цілий сезон основи.
+async function seasonRatings(
   supabase: ReturnType<typeof createServerSupabase>
-): Promise<{ rating: Map<string, number>; matches: Map<string, number> }> {
+): Promise<{ rating: Map<string, number>; matches: Map<string, number>; minutes: Map<string, number> }> {
   const { data } = await supabase
     .from("season_stats_by_competition")
     .select("player_id, rating_weighted_sum, minutes_sum, matches_rated")
@@ -24,81 +28,81 @@ async function smoothedRatings(
     cur.matches += row.matches_rated ?? 0;
     byPlayer.set(row.player_id, cur);
   }
-  const rows = Array.from(byPlayer.entries()).map(([playerId, v]) => ({
-    playerId,
-    matches: v.matches,
-    rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
-  }));
-  const tm = teamMean(rows.map((r) => ({ matches: r.matches, rating: r.rating })));
   const rating = new Map<string, number>();
   const matches = new Map<string, number>();
-  for (const r of rows) {
-    if (r.rating == null) continue;
-    matches.set(r.playerId, r.matches);
-    const smoothed = bayesRating(r.matches, r.rating, Number.isFinite(tm) ? tm : TEAM_MEAN_FALLBACK);
-    if (smoothed != null) rating.set(r.playerId, Math.round(smoothed * 100) / 100);
+  const minutes = new Map<string, number>();
+  for (const [playerId, v] of byPlayer) {
+    matches.set(playerId, v.matches);
+    minutes.set(playerId, v.minutesSum);
+    const mean = weightedMean(v.weightedSum, v.minutesSum);
+    if (mean != null) rating.set(playerId, Math.round(mean * 100) / 100);
   }
-  return { rating, matches };
+  return { rating, matches, minutes };
+}
+
+// Спільний відбір для Топ-3 / Дно-3.
+async function rankedPlayers(limit: number, direction: "top" | "bottom") {
+  const supabase = createServerSupabase();
+  const teamId = await getFirstTeamId(supabase);
+  const { rating, matches, minutes } = await seasonRatings(supabase);
+
+  const ranked = Array.from(rating.entries())
+    .map(([playerId, value]) => ({
+      playerId,
+      rating: value,
+      matches: matches.get(playerId) ?? 0,
+      minutes: minutes.get(playerId) ?? 0,
+    }))
+    .filter((r) => qualifiesForRank(r.matches, r.minutes))
+    .sort((x, y) => (direction === "top" ? y.rating - x.rating : x.rating - y.rating))
+    .slice(0, limit);
+
+  if (ranked.length === 0) return [];
+
+  const ids = ranked.map((r) => r.playerId);
+  const [{ data: players }, { data: totals }] = await Promise.all([
+    supabase
+      .from("players")
+      .select("id, full_name, team_id, position, nationality, birth_date, jersey_number, photo_url")
+      .in("id", ids)
+      .eq("team_id", teamId ?? ""),
+    // Голи + асисти за сезон — для бейджа «Г+П» на картці гравця.
+    supabase
+      .from("season_stats_by_competition")
+      .select("player_id, total_goals, total_assists")
+      .in("player_id", ids)
+      .neq("competition_slug", "friendly"),
+  ]);
+  const totalsById = new Map<string, { goals: number; assists: number }>();
+  for (const row of totals ?? []) {
+    const cur = totalsById.get(row.player_id) ?? { goals: 0, assists: 0 };
+    cur.goals += row.total_goals ?? 0;
+    cur.assists += row.total_assists ?? 0;
+    totalsById.set(row.player_id, cur);
+  }
+
+  return ranked
+    .map((r) => {
+      const p = players?.find((pl) => pl.id === r.playerId);
+      if (!p) return null;
+      const t = totalsById.get(p.id);
+      return {
+        ...p,
+        player_id: p.id,
+        weighted_season_rating: r.rating,
+        goals: t?.goals ?? 0,
+        assists: t?.assists ?? 0,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
 }
 
 export async function getTopPlayers(limit = 3) {
-  const supabase = createServerSupabase();
-  const teamId = await getFirstTeamId(supabase);
-
-  // Рейтинг = та сама згладжена оцінка, що й у /season: матчі від 25 хв,
-  // Байєс k=6 відносно середнього по команді. Товариські не враховуються.
-  const { rating, matches } = await smoothedRatings(supabase);
-  const ranked = Array.from(rating.entries())
-    .map(([playerId, value]) => ({ playerId, rating: value, matches: matches.get(playerId) ?? 0 }))
-    .filter((r) => r.matches >= 2)
-    .sort((x, y) => y.rating - x.rating)
-    .slice(0, limit);
-
-  if (ranked.length === 0) return [];
-
-  const { data: players } = await supabase
-    .from("players")
-    .select("id, full_name, team_id, position, nationality, birth_date, jersey_number, photo_url")
-    .in("id", ranked.map((r) => r.playerId))
-    .eq("team_id", teamId ?? "");
-
-  return ranked
-    .map((r) => {
-      const p = players?.find((pl) => pl.id === r.playerId);
-      if (!p) return null;
-      return { ...p, player_id: p.id, weighted_season_rating: r.rating };
-    })
-    .filter((p): p is NonNullable<typeof p> => p != null);
+  return rankedPlayers(limit, "top");
 }
 
 export async function getBottomPlayers(limit = 3) {
-  const supabase = createServerSupabase();
-  const teamId = await getFirstTeamId(supabase);
-
-  const { rating, matches } = await smoothedRatings(supabase);
-  // Мінімум 2 оцінені матчі — щоб один невдалий вихід не робив гравця
-  // автоматично «найгіршим сезону».
-  const ranked = Array.from(rating.entries())
-    .map(([playerId, value]) => ({ playerId, rating: value, matches: matches.get(playerId) ?? 0 }))
-    .filter((r) => r.matches >= 2)
-    .sort((x, y) => x.rating - y.rating)
-    .slice(0, limit);
-
-  if (ranked.length === 0) return [];
-
-  const { data: players } = await supabase
-    .from("players")
-    .select("id, full_name, team_id, position, nationality, birth_date, jersey_number, photo_url")
-    .in("id", ranked.map((r) => r.playerId))
-    .eq("team_id", teamId ?? "");
-
-  return ranked
-    .map((r) => {
-      const p = players?.find((pl) => pl.id === r.playerId);
-      if (!p) return null;
-      return { ...p, player_id: p.id, weighted_season_rating: r.rating };
-    })
-    .filter((p): p is NonNullable<typeof p> => p != null);
+  return rankedPlayers(limit, "bottom");
 }
 
 export async function getTopMatches(limit = 3) {
@@ -269,7 +273,7 @@ export async function getPlayerProfile(playerId: string) {
   const { data: historyRaw } = await supabase
     .from("match_lineups")
     .select(
-      "avg_rating, minutes_played, goals, assists, is_starting, matches!inner(id, opponent_name, is_home, match_date, status, competitions(name))"
+      "avg_rating, minutes_played, goals, assists, is_starting, formation_slot, matches!inner(id, opponent_name, is_home, match_date, status, competitions(name))"
     )
     .eq("player_id", playerId)
     .eq("matches.status", "finalized");
@@ -283,40 +287,51 @@ export async function getPlayerProfile(playerId: string) {
     (a: any, b: any) => new Date(a.matches.match_date).getTime() - new Date(b.matches.match_date).getTime()
   );
 
-  // Оцінка профілю — та сама згладжена (Байєс k=6), що й у таблиці Сезону.
+  // Оцінка профілю — те саме чесне середнє (зважене на хвилини) з матчів
+  // від 25 хв, що й у таблиці Сезону. Без згладжування.
   let season = seasonRow ?? null;
   if (season?.weighted_season_rating != null) {
     const { data: allRows } = await supabase
       .from("season_stats_by_competition")
       .select("player_id, rating_weighted_sum, minutes_sum, matches_rated")
       .neq("competition_slug", "friendly");
-    const acc = new Map<string, { w: number; m: number; n: number }>();
+    const acc = new Map<string, { w: number; m: number }>();
     for (const row of allRows ?? []) {
-      const cur = acc.get(row.player_id) ?? { w: 0, m: 0, n: 0 };
+      const cur = acc.get(row.player_id) ?? { w: 0, m: 0 };
       cur.w += row.rating_weighted_sum ?? 0;
       cur.m += row.minutes_sum ?? 0;
-      cur.n += row.matches_rated ?? 0;
       acc.set(row.player_id, cur);
     }
-    const list = Array.from(acc.values()).map((v) => ({
-      matches: v.n,
-      rating: v.m > 0 ? v.w / v.m : null,
-    }));
-    const tm = teamMean(list);
     const mine = acc.get(playerId);
-    if (mine && mine.m > 0) {
-      const smoothed = bayesRating(mine.n, mine.w / mine.m, Number.isFinite(tm) ? tm : TEAM_MEAN_FALLBACK);
-      if (smoothed != null) {
-        season = { ...season, weighted_season_rating: Math.round(smoothed * 10) / 10 };
-      }
+    const mean = mine ? weightedMean(mine.w, mine.m) : null;
+    if (mean != null) {
+      season = { ...season, weighted_season_rating: Math.round(mean * 10) / 10 };
     }
   }
+
+  // Розбивка «на яких позиціях скільки матчів і хвилин». Позицію беремо зі
+  // слота схеми (саме так адмін ставить склад), а не з поля position у
+  // картці гравця — інакше Рафінья, який реально грає ФРВ, показувався б як ЛВ.
+  const byPosition = new Map<string, { matches: number; minutes: number; goals: number; assists: number }>();
+  for (const row of history as any[]) {
+    const label = FORMATION_SLOTS[row.formation_slot ?? -1]?.label ?? "поза схемою";
+    const cur = byPosition.get(label) ?? { matches: 0, minutes: 0, goals: 0, assists: 0 };
+    cur.matches += 1;
+    cur.minutes += row.minutes_played ?? 0;
+    cur.goals += row.goals ?? 0;
+    cur.assists += row.assists ?? 0;
+    byPosition.set(label, cur);
+  }
+  const positions = Array.from(byPosition.entries())
+    .map(([label, v]) => ({ label, ...v }))
+    .sort((a, b) => b.minutes - a.minutes);
 
   return {
     player,
     season,
     mvpAwards: mvpRow?.mvp_awards ?? 0,
     history,
+    positions,
   };
 }
 
@@ -423,15 +438,26 @@ export async function getCoachNames() {
   return (data ?? []).map((c) => c.name);
 }
 
+// Судді/тренери без жодного голосу мають avg_rating = NULL. PostgREST без
+// nullsFirst:false ставить NULL ПЕРШИМИ при desc — через це «Кінтеро Гонсалес»
+// з 0 голосів очолював рейтинг на головній. Тепер без оцінки — завжди внизу.
 export async function getSeasonRefereeRatings() {
   const supabase = createServerSupabase();
-  const { data } = await supabase.from("season_referee_ratings").select("*").order("avg_rating", { ascending: false });
+  const { data } = await supabase
+    .from("season_referee_ratings")
+    .select("*")
+    .order("avg_rating", { ascending: false, nullsFirst: false })
+    .order("name", { ascending: true });
   return data ?? [];
 }
 
 export async function getSeasonCoachRatings() {
   const supabase = createServerSupabase();
-  const { data } = await supabase.from("season_coach_ratings").select("*").order("avg_rating", { ascending: false });
+  const { data } = await supabase
+    .from("season_coach_ratings")
+    .select("*")
+    .order("avg_rating", { ascending: false, nullsFirst: false })
+    .order("name", { ascending: true });
   return data ?? [];
 }
 
@@ -636,21 +662,131 @@ export async function getVoterVoteHistory(voterId: string) {
   return data ?? [];
 }
 
-export async function getVoterActivity() {
+// ---------------------------------------------------------------------
+// ФАНАТИ
+// ---------------------------------------------------------------------
+
+export type VoterActivity = {
+  voter_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  matches_voted: number;
+  total_ratings_given: number;
+  avg_rating_given: number | null;
+  quality_matches: number;
+};
+
+const VOTER_COLUMNS =
+  "voter_id, display_name, avatar_url, matches_voted, total_ratings_given, avg_rating_given, quality_matches";
+
+// «Сила голосу» — скільки матчів із 21 завершеного фанат оцінив. Показуємо
+// у відсотках: 100% = голосував у кожному матчі сезону. Дружні не рахуються —
+// вони давно закінчились і лише розмивають картину.
+async function finalizedMatchStats() {
   const supabase = createServerSupabase();
-  const { data, error } = await supabase
-    .from("voter_activity")
-    .select("*")
-    // Рейтинг фанатів: спершу ті, чиї голоси не «плоскі» (quality_matches),
-    // потім — за кількістю матчів.
-    .order("quality_matches", { ascending: false, nullsFirst: false })
-    .order("matches_voted", { ascending: false })
-    .limit(50);
+  const { data } = await supabase
+    .from("matches")
+    .select("id, competitions!inner(slug)")
+    .eq("status", "finalized")
+    .eq("is_cancelled", false)
+    .neq("competitions.slug", "friendly");
+  const ids = new Set((data ?? []).map((m: any) => m.id));
+  return { total: ids.size, ids };
+}
+
+export type VoterDetail = VoterActivity & {
+  coverage: number; // % завершених матчів, у яких фанат голосував
+  perfect_scores: number; // скільки разів ставив 10
+  lowest_scores: number; // скільки разів ставив оцінку ≤ 4
+  mvp_matches: number; // у скількох матчах вибирав МВП
+  first_vote_at: string | null;
+  last_vote_at: string | null;
+  streak_days: number; // днів поспіль тривала робота (найдовша серія матчів)
+};
+
+export async function getVotersOverview() {
+  const supabase = createServerSupabase();
+  const [{ data: rows, error }, { total }] = await Promise.all([
+    supabase.from("voter_activity").select(VOTER_COLUMNS).order("matches_voted", { ascending: false }),
+    finalizedMatchStats(),
+  ]);
   if (error) {
-    console.error("getVoterActivity", error);
-    return [];
+    console.error("getVotersOverview", error);
+    return { voters: [] as VoterDetail[], totalMatches: total };
   }
-  return data ?? [];
+  const voters: VoterDetail[] = (rows ?? []).map((v: any) => ({
+    ...v,
+    avg_rating_given: v.avg_rating_given != null ? Number(v.avg_rating_given) : null,
+    coverage: total > 0 ? Math.round((v.matches_voted / total) * 100) : 0,
+    perfect_scores: 0,
+    lowest_scores: 0,
+    mvp_matches: 0,
+    first_vote_at: null,
+    last_vote_at: null,
+    streak_days: 0,
+  }));
+  return { voters, totalMatches: total };
+}
+
+// Деталі по кожному фанату для сторінки «Фанати»: голоси, крайні оцінки,
+// МВП, період активності. Один запит на всі голоси — далі рахуємо в JS,
+// щоб не робити N запитів на N фанатів.
+export async function getVotersDetailed() {
+  const supabase = createServerSupabase();
+  // Самі votes/mvp_votes анонімно не читаються (RLS: агрегати лише через
+  // view), тому для підрахунку крайніх оцінок беремо service-клієнт —
+  // назовні віддаємо тільки цифри, не самі голоси.
+  const admin = createServiceClient();
+  const [{ data: rows, error }, { total }, { data: votes }, { data: mvps }] = await Promise.all([
+    supabase.from("voter_activity").select(VOTER_COLUMNS).order("matches_voted", { ascending: false }),
+    finalizedMatchStats(),
+    admin.from("votes").select("voter_id, match_id, rating"),
+    admin.from("mvp_votes").select("voter_id, match_id"),
+  ]);
+  if (error) {
+    console.error("getVotersDetailed", error);
+    return { voters: [] as VoterDetail[], totalMatches: total };
+  }
+
+  const acc = new Map<
+    string,
+    { perfect: number; low: number; mvpByMatch: Set<string> }
+  >();
+  for (const v of votes ?? []) {
+    const cur = acc.get(v.voter_id) ?? { perfect: 0, low: 0, mvpByMatch: new Set<string>() };
+    const r = Number(v.rating);
+    if (r >= 10) cur.perfect += 1;
+    if (r <= 4) cur.low += 1;
+    acc.set(v.voter_id, cur);
+  }
+  for (const m of mvps ?? []) {
+    const cur = acc.get(m.voter_id);
+    if (cur) cur.mvpByMatch.add(m.match_id);
+  }
+
+  const voters: VoterDetail[] = (rows ?? []).map((v: any) => {
+    const extra = acc.get(v.voter_id);
+    return {
+      ...v,
+      avg_rating_given: v.avg_rating_given != null ? Number(v.avg_rating_given) : null,
+      coverage: total > 0 ? Math.round((v.matches_voted / total) * 100) : 0,
+      perfect_scores: extra?.perfect ?? 0,
+      lowest_scores: extra?.low ?? 0,
+      mvp_matches: extra?.mvpByMatch.size ?? 0,
+      first_vote_at: null,
+      last_vote_at: null,
+      streak_days: 0,
+    };
+  });
+  return { voters, totalMatches: total };
+}
+
+// Сумісність: головна бере топ-5 фанатів саме тут.
+export async function getVoterActivity() {
+  const { voters } = await getVotersDetailed();
+  return [...voters]
+    .sort((a, b) => b.matches_voted - a.matches_voted || b.quality_matches - a.quality_matches)
+    .slice(0, 50);
 }
 
 // ---------------------------------------------------------------------

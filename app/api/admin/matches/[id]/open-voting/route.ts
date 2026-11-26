@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag, revalidatePath } from "next/cache";
+import { DATA_TAGS } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getAdminInfo } from "@/lib/admin";
 import { votingClosesAt } from "@/lib/voting";
@@ -30,5 +32,8 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: error.message }, { status: 403 });
   }
 
+  revalidateTag(DATA_TAGS.matches);
+  revalidatePath("/matches");
+  revalidatePath(`/matches/${params.id}`);
   return NextResponse.json({ ok: true, closesAt: closesAt.toISOString() });
 }

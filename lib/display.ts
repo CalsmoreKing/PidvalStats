@@ -58,6 +58,20 @@ export function matchPhase(
   if (elapsedMin < 130) return "second-half";
   return "over";
 }
+// Результат матчу з погляду Барселони — для товстої рамки картки.
+export function matchOutcome(
+  homeScore: number | null,
+  awayScore: number | null,
+  isHome: boolean
+): "win" | "draw" | "loss" | null {
+  if (homeScore == null || awayScore == null) return null;
+  const own = isHome ? homeScore : awayScore;
+  const opp = isHome ? awayScore : homeScore;
+  if (own > opp) return "win";
+  if (own === opp) return "draw";
+  return "loss";
+}
+
 export function ratingColor(rating: number): { bg: string; text: string } {
   // Раніше 7.0-8.4 і 8.5-10 обидва були відтінками зелено-жовтого й майже
   // не різнились візуально. Тепер кожен рівень — виразно інший колір.

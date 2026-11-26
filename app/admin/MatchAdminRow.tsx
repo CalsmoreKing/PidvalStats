@@ -55,6 +55,7 @@ export default function MatchAdminRow({
   competitions,
   referees,
   coaches,
+  defaultOpen = false,
 }: {
   match: any;
   roster: RosterPlayer[];
@@ -62,9 +63,10 @@ export default function MatchAdminRow({
   competitions: { id: string; name: string }[];
   referees: { id: string; name: string; photo_url?: string | null }[];
   coaches: { id: string; name: string; photo_url?: string | null }[];
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [editOpen, setEditOpen] = useState(false);
   const initial = buildInitialState(existingLineup);
   const [slotAssignments, setSlotAssignments] = useState<Record<number, string | null>>(initial.slotAssignments);

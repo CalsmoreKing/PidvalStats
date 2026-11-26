@@ -14,7 +14,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
   const profile = await getPlayerProfile(params.id);
   if (!profile) return notFound();
 
-  const { player, season, mvpAwards, history } = profile;
+  const { player, season, mvpAwards, history, positions } = profile;
   const age = calcAge(player.birth_date);
 
   const ratedHistory: any[] = history.filter((h: any) => h.avg_rating != null);
@@ -117,6 +117,37 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
                 }))}
               />
             </section>
+
+            {/* Де грав насправді: слоти схеми за весь сезон */}
+            {positions.length > 0 && (
+              <section className="mb-10">
+                <div className="eyebrow mb-3">Позиції за сезон</div>
+                <div className="rounded-xl border border-white/5 bg-panel/60 overflow-hidden">
+                  {positions.map((p) => {
+                    const most = positions[0].minutes || 1;
+                    return (
+                      <div key={p.label} className="px-4 py-2.5 border-b border-white/5 last:border-0">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-ivory">{p.label}</span>
+                          <span className="text-muted font-utility">
+                            {p.matches} м. · {p.minutes} хв
+                            {(p.goals > 0 || p.assists > 0) && (
+                              <span className="text-gold/70"> · {p.goals}+{p.assists}</span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gold/50"
+                            style={{ width: `${Math.round((p.minutes / most) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {/* Найкращий / найгірший матч */}
             <section className="grid grid-cols-2 gap-3 mb-10 lg:mb-0">

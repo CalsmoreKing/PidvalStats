@@ -5,27 +5,22 @@
 // це шум, а не гра). SQL-двійник: rating_min_minutes() = 25.
 export const MIN_MINUTES_FOR_RATING = 25;
 
-// Байєсівське згладжування: (n·mean + k·teamMean) / (n + k).
-// Не дає одному матчу з оцінкою 9.5 зробити гравця «топом сезону».
-export const BAYES_K = 6;
+// Мінімум «залікових» матчів, щоб оцінка брала участь у рейтингу взагалі.
+// Раніше замість цього стояло байєсівське згладжування (k=6), яке тягнуло
+// будь-який одиничний матч до середнього по команді — через це резервний
+// воротар з одним матчем опинявся вище півоснови. Тепер оцінка = чесне
+// середнє зі своїх матчів, а в топ потрапляють лише ті, хто реально грав.
+export const MIN_MATCHES_FOR_RANK = 3;
 
-export function bayesRating(n: number, mean: number, teamMean: number, k = BAYES_K): number | null {
-  if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(mean)) return null;
-  return (n * mean + k * teamMean) / (n + k);
+// Поріг для місця в рейтингу: і за хвилинами, і за матчами.
+export const MIN_MINUTES_FOR_RANK = 270;
+
+export function qualifiesForRank(matches: number, minutes: number): boolean {
+  return matches >= MIN_MATCHES_FOR_RANK && minutes >= MIN_MINUTES_FOR_RANK;
 }
 
-// Середня оцінка по команді (зважена на кількість матчів) — потрібна для Байєса.
-export function teamMean(rows: { matches: number; rating: number | null }[]): number {
-  let sum = 0;
-  let count = 0;
-  for (const r of rows) {
-    if (r.rating == null || r.matches <= 0) continue;
-    sum += r.rating * r.matches;
-    count += r.matches;
-  }
-  return count > 0 ? sum / count : 6.5;
+// Середнє, зважене на хвилини: матч на 90 хв важить більше, ніж вихід на 25.
+export function weightedMean(weightedSum: number, minutesSum: number): number | null {
+  if (!Number.isFinite(weightedSum) || !Number.isFinite(minutesSum) || minutesSum <= 0) return null;
+  return weightedSum / minutesSum;
 }
-
-// Куди оцінка матчу потрапляє: чи є похибка через вагу хвилин.
-// teamMean 6.5–6.8 типовий, тому віддаємо його явно, щоб було видно в коді.
-export const TEAM_MEAN_FALLBACK = 6.5;
