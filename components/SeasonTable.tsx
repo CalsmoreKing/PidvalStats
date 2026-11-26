@@ -201,6 +201,7 @@ export default function SeasonTable({
       qualified: qualifiesForRank(v.matches, v.minutes),
       // Вінрейт: у скількох зі своїх матчів він грав — і скільки з них команда виграла.
       winrate: v.teamAllIds.size > 0 ? Math.round((v.teamWinIds.size / v.teamAllIds.size) * 100) : 0,
+      winrateGames: v.teamAllIds.size,
       winrateStarts: v.teamAllIds.size,
       season_rating: combine ? avg(v.all) : avg(v.start),
     }));

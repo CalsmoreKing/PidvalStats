@@ -2,6 +2,7 @@ import SeasonTable, { MatchRow } from "@/components/SeasonTable";
 import { matchOutcome } from "@/lib/display";
 import RatingList from "@/components/RatingList";
 import {
+  getAllMatches,
   getSeasonPlayerMatches,
   getCompetitions,
   getSeasonRefereeRatings,
@@ -15,13 +16,21 @@ import {
 export const revalidate = 60;
 
 export default async function SeasonPage() {
-  const [raw, competitions, refereeRatings, coachRatings, team] = await Promise.all([
+  const [raw, competitions, refereeRatings, coachRatings, team, allMatches] = await Promise.all([
     getSeasonPlayerMatches(),
     getCompetitions(),
     getSeasonRefereeRatings(),
     getSeasonCoachRatings(),
     getFirstTeam(),
+    getAllMatches(),
   ]);
+
+  // Результат кожного матчу — для «вінрейту» (у view season_player_matches
+  // рахунку немає, тому підтягуємо окремо й мапимо за id).
+  const resultByMatch = new Map<string, "win" | "draw" | "loss" | null>();
+  for (const m of allMatches as any[]) {
+    resultByMatch.set(m.id, matchOutcome(m.home_score, m.away_score, m.is_home));
+  }
 
   // Лише гравці основної команди (як і раніше в season_stats)
   const rows: MatchRow[] = raw
@@ -40,7 +49,7 @@ export default async function SeasonPage() {
       assists: Number(r.assists ?? 0),
       votes: Number(r.votes ?? 0),
       rating: r.avg_rating != null ? Number(r.avg_rating) : null,
-      result: matchOutcome(r.home_score, r.away_score, r.is_home),
+      result: resultByMatch.get(r.match_id) ?? null,
     }));
 
   return (

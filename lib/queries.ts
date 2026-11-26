@@ -707,14 +707,15 @@ const VOTER_COLUMNS =
 // «Сила голосу» — скільки матчів із 21 завершеного фанат оцінив. Показуємо
 // у відсотках: 100% = голосував у кожному матчі сезону. Дружні не рахуються —
 // вони давно закінчились і лише розмивають картину.
+// Знаменник для відсотка покриття: усі підсумовані матчі (як їх рахує
+// voter_activity, включно з товариськими) — інакше виходить 117% сезону.
 async function finalizedMatchStats() {
   const supabase = createServerSupabase();
   const { data } = await supabase
     .from("matches")
-    .select("id, competitions!inner(slug)")
+    .select("id")
     .eq("status", "finalized")
-    .eq("is_cancelled", false)
-    .neq("competitions.slug", "friendly");
+    .eq("is_cancelled", false);
   const ids = new Set((data ?? []).map((m: any) => m.id));
   return { total: ids.size, ids };
 }
