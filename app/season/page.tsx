@@ -1,5 +1,5 @@
 import SeasonTable, { MatchRow } from "@/components/SeasonTable";
-import { MIN_MINUTES_FOR_RATING, MIN_MATCHES_FOR_RANK } from "@/lib/season";
+import { matchOutcome } from "@/lib/display";
 import RatingList from "@/components/RatingList";
 import {
   getSeasonPlayerMatches,
@@ -28,6 +28,7 @@ export default async function SeasonPage() {
     .filter((r: any) => !team || r.team_id === team.id)
     .map((r: any) => ({
       id: r.player_id,
+      matchId: r.match_id,
       fullName: r.full_name,
       position: r.position,
       competitionSlug: r.competition_slug,
@@ -39,20 +40,13 @@ export default async function SeasonPage() {
       assists: Number(r.assists ?? 0),
       votes: Number(r.votes ?? 0),
       rating: r.avg_rating != null ? Number(r.avg_rating) : null,
+      result: matchOutcome(r.home_score, r.away_score, r.is_home),
     }));
 
   return (
     <div className="px-4 md:px-12 py-8 max-w-6xl mx-auto">
       <div className="eyebrow mb-3">Підсумки</div>
       <h1 className="font-display text-4xl text-ivory mb-8">Сезон 26/27</h1>
-      <p className="text-xs text-muted mb-6 max-w-2xl leading-relaxed">
-        Оцінка гравця — середнє з матчів, у яких він відіграв {MIN_MINUTES_FOR_RATING}+ хвилин
-        (матч на 90 хв важить більше, ніж вихід на 25). Місце в рейтингу отримує
-        лише той, у кого таких матчів {MIN_MATCHES_FOR_RANK}+ — тому один вдалий вихід
-        не піднімає вище за гравця основи. Гравці без порогу показані тьмяними,
-        без місця.
-      </p>
-
       {rows.length === 0 ? (
         <p className="text-sm text-muted">
           Ще немає жодного підсумованого матчу — таблиця заповниться після

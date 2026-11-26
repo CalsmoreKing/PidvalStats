@@ -53,6 +53,20 @@ function clampMinute(v: string): string {
   return String(n);
 }
 
+// Слот схеми → ширші позиції, які теж підходять на цей слот.
+const ROLE_FOR_SLOT: Record<string, string[]> = {
+  ВРТ: ["ВРТ"],
+  ЛЗ: ["ЛЗ", "ЗХ", "ПЗХ"],
+  ЦЗ: ["ЦЗ", "ЗХ"],
+  ПЗ: ["ПЗ", "ЗХ", "ПЗХ"],
+  ЦОП: ["ЦОП", "ЦП", "ПЗХ"],
+  ЦП: ["ЦП", "ЦОП", "ЦАП"],
+  ЛВ: ["ЛВ", "ФРВ", "АТК"],
+  ПВ: ["ПВ", "ФРВ", "АТК"],
+  ЦАП: ["ЦАП", "ЦП", "АТК"],
+  ФРВ: ["ФРВ", "ЦАП", "АТК"],
+};
+
 export default function VisualLineupBuilder({
   matchId,
   roster,
@@ -62,6 +76,7 @@ export default function VisualLineupBuilder({
   setSubIds,
   details,
   setDetail,
+  seasonSlots,
 }: {
   matchId: string;
   roster: RosterPlayer[];
@@ -71,6 +86,9 @@ export default function VisualLineupBuilder({
   setSubIds: (v: string[]) => void;
   details: Record<string, PlayerDetail>;
   setDetail: (playerId: string, patch: Partial<PlayerDetail>) => void;
+  // Скільки матчів цього сезону гравець провів на кожному слоті:
+  // { [playerId]: { "ЦОП": 16, "ЦП": 2 } }
+  seasonSlots?: Record<string, Record<string, number>>;
 }) {
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [showAllForSlot, setShowAllForSlot] = useState(false);
@@ -80,6 +98,7 @@ export default function VisualLineupBuilder({
   const [duplicating, setDuplicating] = useState(false);
   const [duplicateMsg, setDuplicateMsg] = useState("");
 
+  const seasonSlotCount = (playerId: string, label: string) => seasonSlots?.[playerId]?.[label] ?? 0;
   const usedIds = new Set([...Object.values(slotAssignments).filter(Boolean), ...subIds]);
   const startersInSquad = Object.values(slotAssignments).filter(Boolean) as string[];
 
@@ -130,11 +149,25 @@ export default function VisualLineupBuilder({
       return eligible(roster).filter((p) => p.full_name.toLowerCase().includes(q));
     }
 
-    const filtered = roster.filter(
-      (p) => p.position === def.label || p.positions?.includes(def.label)
-    );
+    // Гравці за позицією: основний слот + додаткові + вже призначений у слот.
+    // Порівнюємо і точний слот (ЦЗ), і лінію (ЗХ/ПЗХ/ЦП/АТК) — бо в картці
+    // гравця часто стоїть ширша позиція, ніж конкретний слот схеми.
+    const matchesSlot = (p: RosterPlayer) => {
+      const wanted = [def.label, ...(ROLE_FOR_SLOT[def.label] ?? [])];
+      const own = [p.position, ...(p.positions ?? [])].filter(Boolean) as string[];
+      return own.some((pos) => wanted.includes(pos));
+    };
+    const filtered = roster.filter(matchesSlot);
     const pool = showAllForSlot || filtered.length === 0 ? roster : filtered;
-    return eligible(pool);
+    // Спершу ті, хто вже грав саме на цьому слоті в сезоні — ближче до правди,
+    // ніж просто «позиція в картці».
+    const ordered = [...eligible(pool)].sort((a, b) => {
+      const sa = seasonSlotCount(a.id, def.label);
+      const sb = seasonSlotCount(b.id, def.label);
+      if (sa !== sb) return sb - sa;
+      return 0;
+    });
+    return ordered;
   }
 
   // Автоматично рахуємо пару "хто вийшов / хто зайшов" при зміні хвилини заміни
@@ -272,6 +305,9 @@ export default function VisualLineupBuilder({
                       className="w-full text-left px-3 py-1.5 text-[11px] text-ivory hover:bg-white/5 truncate"
                     >
                       {p.jersey_number ?? "—"} {p.full_name}
+                      {seasonSlotCount(p.id, def.label) > 0 && (
+                        <span className="ml-1 text-[9px] text-gold/70">{seasonSlotCount(p.id, def.label)}×</span>
+                      )}
                     </button>
                   ))}
                   {playersForSlot(def).length === 0 && (

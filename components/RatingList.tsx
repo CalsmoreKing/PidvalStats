@@ -1,4 +1,4 @@
-import { ratingColor } from "@/lib/display";
+import { ratingColor, shortPersonName, initials } from "@/lib/display";
 
 // avg_rating = null, якщо за цього суддю/тренера ще ніхто не голосував
 type Item = { name: string; matches: number; avg_rating: number | null };
@@ -16,9 +16,14 @@ export default function RatingList({ items, compact = false }: { items: Item[]; 
               key={it.name}
               className={`flex items-center justify-between gap-3 px-4 bg-panel/80 ${compact ? "py-2" : "py-3"}`}
             >
-              <div className="min-w-0">
-                <div className="text-sm text-ivory truncate">{it.name}</div>
-                <div className="text-xs text-muted">{matchesWord(it.matches)}</div>
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="h-7 w-7 shrink-0 rounded-full bg-panel-raised border border-white/5 flex items-center justify-center text-[10px] font-utility text-ivory/50">
+                  {initials(it.name)}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm text-ivory truncate">{shortPersonName(it.name)}</div>
+                  <div className="text-xs text-muted">{matchesWord(it.matches)}</div>
+                </div>
               </div>
               {rc ? (
                 <span

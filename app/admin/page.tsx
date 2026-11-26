@@ -15,6 +15,7 @@ import {
   getCreditHelpers,
   getCustomIcons,
   getAwardData,
+  getSeasonSlotCounts,
 } from "@/lib/queries";
 import { createServiceClient } from "@/lib/supabase/service";
 import CreateMatchForm from "./CreateMatchForm";
@@ -83,7 +84,10 @@ export default async function AdminPage() {
     (m: any) => m.status === "scheduled" && !m.is_cancelled && new Date(m.match_date).getTime() > nowTs
   )?.id;
 
-  const lineups = await Promise.all(matches.map((m: any) => getLineupForMatch(m.id)));
+  const [lineups, seasonSlots] = await Promise.all([
+    Promise.all(matches.map((m: any) => getLineupForMatch(m.id))),
+    getSeasonSlotCounts(),
+  ]);
   const lineupsByMatch = new Map<string, any>();
   matches.forEach((m: any, i: number) => lineupsByMatch.set(m.id, lineups[i]));
 
@@ -106,6 +110,7 @@ export default async function AdminPage() {
               competitions={competitions}
               referees={referees}
               coaches={coaches}
+              seasonSlots={seasonSlots}
               defaultOpen={m.id === nextUpcomingId}
             />
           ))}

@@ -84,7 +84,6 @@ export default async function CampNouPage() {
                         <div className="text-sm text-ivory truncate leading-tight">{v.display_name}</div>
                         <div className="text-[11px] text-muted leading-tight">
                           {v.matches_voted} {v.matches_voted === 1 ? "матч" : "матчів"}
-                          {v.mvp_matches > 0 && <span className="text-muted/70"> · {v.mvp_matches}× МВП</span>}
                         </div>
                       </div>
                       {avg != null && rc && (
@@ -115,10 +114,7 @@ export default async function CampNouPage() {
         <section className="order-1 xl:order-2">
           <SectionTitle title="Топ‑3 гравці сезону" />
           {topPlayers.length === 0 ? (
-            <p className="text-sm text-muted">
-              Ще немає завершених матчів з оцінками — статистика зʼявиться тут після першого підсумованого
-              голосування.
-            </p>
+            <p className="text-sm text-muted">Ще немає підсумованих матчів.</p>
           ) : (
             <div className="flex flex-col gap-6">
               {topPlayers.map((p) => (
@@ -132,7 +128,7 @@ export default async function CampNouPage() {
         <section className="order-2 xl:order-3">
           <SectionTitle title="Дно‑3 сезону" />
           {bottomPlayers.length === 0 ? (
-            <p className="text-sm text-muted">З&apos;явиться, коли гравці матимуть щонайменше 2 оцінені матчі.</p>
+            <p className="text-sm text-muted">Ще немає підсумованих матчів.</p>
           ) : (
             <div className="flex flex-col gap-6">
               {bottomPlayers.map((p) => (

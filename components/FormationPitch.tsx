@@ -1,4 +1,4 @@
-import { shortName, ratingColor } from "@/lib/display";
+import { shortName, ratingColor, shortPersonName, initials } from "@/lib/display";
 import { flagUrl } from "@/lib/flags";
 import StatIcon from "@/components/StatIcon";
 
@@ -156,14 +156,14 @@ function StaffCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-ivory/30 font-display">
-            {(name ?? "?")[0]}
+          <div className="absolute inset-0 flex items-center justify-center text-ivory/45 font-display text-sm tracking-wide">
+            {initials(name)}
           </div>
         )}
       </div>
       <div className="min-w-0">
         <div className="eyebrow mb-0.5">{label}</div>
-        <div className="text-sm text-ivory truncate">{name ?? "—"}</div>
+        <div className="text-sm text-ivory truncate">{shortPersonName(name)}</div>
         {rating != null && (
           <span
             className={`rating-star inline-flex h-6 w-6 items-center justify-center font-utility text-[9px] font-bold mt-1 ${

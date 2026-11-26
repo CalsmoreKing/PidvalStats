@@ -8,6 +8,27 @@ export function shortName(fullName: string, override?: string | null): string {
   return parts[parts.length - 1] ?? fullName;
 }
 
+// Ім'я судді/тренера у два слова — в матчі інакше рядок рветься на три рядки.
+// «Марко Гуїдо» → «Марко Гуїдо», «Хуан Мартінес Мунієра» → «Хуан Мунієра».
+export function shortPersonName(name: string | null, maxWords = 2): string {
+  if (!name) return "—";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= maxWords) return name.trim();
+  return [parts[0], parts[parts.length - 1]].join(" ");
+}
+
+// Ініціали для заглушки, коли фото немає: «Марко Гуїдо» → «МГ».
+export function initials(name: string | null): string {
+  if (!name) return "?";
+  return name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 // Спільний переклад статусів матчу для інтерфейсу
 export const MATCH_STATUS_LABELS: Record<string, string> = {
   scheduled: "Заплановано",

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getAllMatches, getFirstTeam } from "@/lib/queries";
-import { matchStatusLabel, matchPhase, matchOutcome, ratingColor, pluralMatches } from "@/lib/display";
+import { matchStatusLabel, matchPhase, matchOutcome, ratingColor } from "@/lib/display";
 import VotingCountdown from "@/components/VotingCountdown";
 import LocalDateTime from "@/components/LocalDateTime";
+import MonthAccordion from "@/components/MonthAccordion";
 
 // Календар змінюється тільки з адмінки — 30 с кешу достатньо.
 export const revalidate = 30;
@@ -26,9 +27,9 @@ function cardBorder(m: any, isNext: boolean): string {
   }
   if (m.status === "finalized") {
     const outcome = matchOutcome(m.home_score, m.away_score, m.is_home);
-    if (outcome === "win") return "border-[3px] border-[#2ECC71] bg-panel";
-    if (outcome === "draw") return "border-[3px] border-[#E8C547] bg-panel";
-    if (outcome === "loss") return "border-[3px] border-[#E05A5A] bg-panel";
+    if (outcome === "win") return "border-2 border-[#2ECC71]/90 bg-panel";
+    if (outcome === "draw") return "border-2 border-[#E8C547]/90 bg-panel";
+    if (outcome === "loss") return "border-2 border-[#E05A5A]/90 bg-panel";
   }
   return "border border-white/5 bg-panel";
 }
@@ -131,8 +132,6 @@ export default async function MatchesPage() {
     .filter((m) => !upcomingIds.has(m.id))
     .sort((a, b) => +new Date(b.match_date) - +new Date(a.match_date));
 
-  const upcomingRest = upcoming.slice(1);
-
   const lastPlayed = played.find((m) => m.status === "finalized" || new Date(m.match_date).getTime() <= now) ?? null;
   const rest = played.filter((m) => m.id !== lastPlayed?.id);
 
@@ -145,7 +144,7 @@ export default async function MatchesPage() {
         <p className="text-sm text-muted">Ще немає жодного матчу.</p>
       ) : (
         <div className="flex flex-col gap-8">
-          {/* 1. Найближчий матч — завжди зверху й розгорнутий */}
+          {/* 1. Наступний матч — завжди зверху */}
           {nextMatch && (
             <section>
               <div className="eyebrow mb-3">Наступний матч</div>
@@ -153,59 +152,28 @@ export default async function MatchesPage() {
             </section>
           )}
 
-          {/* 2. Решта майбутніх — згорнуті по місяцях */}
-          {upcomingRest.length > 0 && (
-            <section>
-              <div className="eyebrow mb-3">Далі в календарі</div>
-              <div className="flex flex-col gap-3">
-                {Array.from(groupByMonth(upcomingRest).entries()).map(([key, list]) => (
-                  <details key={key} className="group rounded-xl border border-white/5 bg-panel/40">
-                    <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none">
-                      <span className="font-display text-base text-gold-bright/90">{formatMonth(key)}</span>
-                      <span className="flex items-center gap-2 text-[11px] text-muted">
-                        {list.length} {pluralMatches(list.length)}
-                        <span className="transition-transform duration-150 group-open:rotate-180">▾</span>
-                      </span>
-                    </summary>
-                    <div className="flex flex-col gap-3 px-3 pb-3">
-                      {list.map((m) => (
-                        <MatchCard key={m.id} match={m} isNext={false} teamCrest={teamCrest} />
-                      ))}
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 3. Останній зіграний */}
+          {/* 2. Минулий (найсвіжіший зіграний) */}
           {lastPlayed && (
             <section>
-              <div className="eyebrow mb-3">Останній зіграний</div>
+              <div className="eyebrow mb-3">Минулий матч</div>
               <MatchCard match={lastPlayed} isNext={false} teamCrest={teamCrest} />
             </section>
           )}
 
-          {/* 4. Решта — по місяцях, згорнуті */}
+          {/* 3. Зіграні — по місяцях, спочатку найновіші */}
           {rest.length > 0 && (
             <section>
-              <div className="eyebrow mb-3">Раніше</div>
               <div className="flex flex-col gap-3">
                 {Array.from(groupByMonth(rest).entries()).map(([key, list]) => (
-                  <details key={key} className="group rounded-xl border border-white/5 bg-panel/40">
-                    <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none">
-                      <span className="font-display text-base text-ivory/85">{formatMonth(key)}</span>
-                      <span className="flex items-center gap-2 text-[11px] text-muted">
-                        {list.length}
-                        <span className="transition-transform duration-150 group-open:rotate-180">▾</span>
-                      </span>
-                    </summary>
-                    <div className="flex flex-col gap-3 px-3 pb-3">
-                      {list.map((m) => (
-                        <MatchCard key={m.id} match={m} isNext={false} teamCrest={teamCrest} />
-                      ))}
-                    </div>
-                  </details>
+                  <MonthAccordion
+                    key={key}
+                    label={formatMonth(key)}
+                    countLabel={`${list.length} ${list.length === 1 ? "матч" : "матчі"}`}
+                  >
+                    {list.map((m: any) => (
+                      <MatchCard key={m.id} match={m} isNext={false} teamCrest={teamCrest} />
+                    ))}
+                  </MonthAccordion>
                 ))}
               </div>
             </section>
@@ -216,8 +184,8 @@ export default async function MatchesPage() {
   );
 }
 
-// Місяці рахуємо за UTC-ключем із ISO — щоб розкладка заголовків не залежала
-// від пояса глядача (сам час у картці показує LocalDateTime локально).
+// Місяці рахуємо за UTC-ключем із ISO — заголовки не залежать від пояса глядача
+// (сам час у картці показує LocalDateTime локально).
 function groupByMonth(list: any[]) {
   const map = new Map<string, any[]>();
   for (const m of list) {

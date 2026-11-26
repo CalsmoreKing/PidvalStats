@@ -14,7 +14,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
   const profile = await getPlayerProfile(params.id);
   if (!profile) return notFound();
 
-  const { player, season, mvpAwards, history, positions } = profile;
+  const { player, season, mvpAwards, history, positions, derivedPosition, positionMix } = profile;
   const age = calcAge(player.birth_date);
 
   const ratedHistory: any[] = history.filter((h: any) => h.avg_rating != null);
@@ -59,7 +59,7 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
               )}
               <div className="font-display text-2xl text-ivory leading-tight">{player.full_name}</div>
               <div className="flex items-center gap-2 mt-1.5">
-                <span className="eyebrow">{player.position}</span>
+                <span className="eyebrow">{derivedPosition}</span>
                 <span className="text-xs text-muted">{age} років</span>
               </div>
             </div>
@@ -121,7 +121,10 @@ export default async function PlayerProfilePage({ params }: { params: { id: stri
             {/* Де грав насправді: слоти схеми за весь сезон */}
             {positions.length > 0 && (
               <section className="mb-10">
-                <div className="eyebrow mb-3">Позиції за сезон</div>
+                <div className="mb-3">
+                  <div className="eyebrow">Позиції за сезон</div>
+                  <div className="text-[11px] text-muted mt-0.5">{positionMix}</div>
+                </div>
                 <div className="rounded-xl border border-white/5 bg-panel/60 overflow-hidden">
                   {positions.map((p) => {
                     const most = positions[0].minutes || 1;

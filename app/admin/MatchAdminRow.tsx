@@ -55,6 +55,7 @@ export default function MatchAdminRow({
   competitions,
   referees,
   coaches,
+  seasonSlots,
   defaultOpen = false,
 }: {
   match: any;
@@ -63,6 +64,7 @@ export default function MatchAdminRow({
   competitions: { id: string; name: string }[];
   referees: { id: string; name: string; photo_url?: string | null }[];
   coaches: { id: string; name: string; photo_url?: string | null }[];
+  seasonSlots?: Record<string, Record<string, number>>;
   defaultOpen?: boolean;
 }) {
   const router = useRouter();
@@ -521,6 +523,7 @@ export default function MatchAdminRow({
             setSubIds={setSubIds}
             details={details}
             setDetail={setDetail}
+            seasonSlots={seasonSlots}
           />
 
           {msg && <div className="text-xs text-gold-bright my-2">{msg}</div>}

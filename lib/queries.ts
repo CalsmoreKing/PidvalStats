@@ -326,12 +326,19 @@ export async function getPlayerProfile(playerId: string) {
     .map(([label, v]) => ({ label, ...v }))
     .sort((a, b) => b.minutes - a.minutes);
 
+  // Позиція «по всіх матчах сезону»: той слот, де гравець провів найбільше
+  // хвилин. Картка гравця в адмінці лишається ручною, тут — фактична.
+  const derivedPosition = positions[0]?.label ?? player.position;
+  const positionMix = positions.map((p) => `${p.label} ${p.matches}`).join(" · ");
+
   return {
     player,
     season,
     mvpAwards: mvpRow?.mvp_awards ?? 0,
     history,
     positions,
+    derivedPosition,
+    positionMix,
   };
 }
 
@@ -660,6 +667,24 @@ export async function getVoterVoteHistory(voterId: string) {
     return [];
   }
   return data ?? [];
+}
+
+// Скільки матчів сезону кожен гравець провів на кожному слоті схеми —
+// для підказок в адмін-редакторі складу (щоб не тикати навмання).
+export async function getSeasonSlotCounts(): Promise<Record<string, Record<string, number>>> {
+  const supabase = createServerSupabase();
+  const { data } = await supabase
+    .from("match_lineups")
+    .select("player_id, formation_slot, matches!inner(status)")
+    .eq("matches.status", "finalized");
+  const out: Record<string, Record<string, number>> = {};
+  for (const row of data ?? []) {
+    const label = FORMATION_SLOTS[row.formation_slot ?? -1]?.label;
+    if (!label) continue;
+    out[row.player_id] = out[row.player_id] ?? {};
+    out[row.player_id][label] = (out[row.player_id][label] ?? 0) + 1;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------

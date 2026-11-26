@@ -12,6 +12,7 @@ import { MIN_MINUTES_FOR_RATING, MIN_MATCHES_FOR_RANK, qualifiesForRank } from "
 // кожен фільтр.
 export type MatchRow = {
   id: string; // player id
+  matchId: string;
   fullName: string;
   position: string | null;
   competitionSlug: string;
@@ -23,6 +24,7 @@ export type MatchRow = {
   assists: number;
   votes: number;
   rating: number | null; // середня оцінка фанатів за цей матч
+  result: "win" | "draw" | "loss" | null; // результат матчу для команди
 };
 
 type SortKey =
@@ -33,17 +35,18 @@ type SortKey =
   | "minutes"
   | "minutes_pct"
   | "minutes_avg"
+  | "winrate"
   | "season_rating";
 
-// link — необов'язковий підпис-уточнення дрібним шрифтом під заголовком
-const columns: { key: SortKey; label: string; hint?: string; accent?: boolean }[] = [
+const columns: { key: SortKey; label: string; accent?: boolean }[] = [
   { key: "matches", label: "Матчі", accent: true },
   { key: "minutes", label: "Хвилини" },
-  { key: "minutes_pct", label: "% сезону", hint: "% усіх хвилин" },
+  { key: "minutes_pct", label: "% часу" },
   { key: "minutes_avg", label: "Хв/матч" },
   { key: "goals", label: "Голи", accent: true },
   { key: "assists", label: "Асисти", accent: true },
   { key: "votes", label: "Голоси" },
+  { key: "winrate", label: "Вінрейт" },
   { key: "season_rating", label: "Рейтинг" },
 ];
 
@@ -113,6 +116,9 @@ export default function SeasonTable({
         votes: number;
         minutes: number;
         subMinutes: number;
+        matchIds: Set<string>;
+        teamWinIds: Set<string>;
+        teamAllIds: Set<string>;
         all: Agg;
         start: Agg;
         sub: Agg;
@@ -138,6 +144,9 @@ export default function SeasonTable({
           votes: 0,
           minutes: 0,
           subMinutes: 0,
+          matchIds: new Set<string>(),
+          teamWinIds: new Set<string>(),
+          teamAllIds: new Set<string>(),
           all: emptyAgg(),
           start: emptyAgg(),
           sub: emptyAgg(),
@@ -151,6 +160,9 @@ export default function SeasonTable({
       cur.assists += r.assists;
       cur.votes += r.votes;
       cur.minutes += r.minutes;
+      cur.matchIds.add(r.matchId);
+      cur.teamAllIds.add(r.matchId);
+      if (r.result === "win") cur.teamWinIds.add(r.matchId);
       if (!r.isStarting) cur.subMinutes += r.minutes;
       cur.all.apps += 1;
       if (r.isStarting) cur.start.apps += 1;
@@ -165,19 +177,6 @@ export default function SeasonTable({
       }
       acc.set(r.id, cur);
     }
-    // Хвилини ВСІЄЇ команди в обраному зрізі: сума по всіх матчах, які є в
-    // rows (з трьох джерел — старт, заміни, виходи на заміну). Ділити на це
-    // й означає «частка від усіх хвилин сезону».
-    const teamMinutes = rows.reduce(
-      (sum, r) =>
-        checked.has(r.competitionSlug) &&
-        (activeMonths.size === 0 || activeMonths.has(r.month)) &&
-        (groups.size === 0 || groups.has(positionGroup(r.position) as PositionGroup))
-          ? sum + r.minutes
-          : sum,
-      0
-    );
-
     return Array.from(acc.entries()).map(([id, v]) => ({
       id,
       full_name: v.name,
@@ -189,16 +188,20 @@ export default function SeasonTable({
       votes: v.votes,
       minutes: v.minutes,
       subMinutes: v.subMinutes,
-      // % сезону — скільки з УСІХ хвилин команди в цьому зрізі відіграв гравець.
-      minutes_pct: teamMinutes > 0 ? Math.round((v.minutes / teamMinutes) * 1000) / 10 : 0,
-      // Хв/матч — середнє навантаження за кожен вихід.
+      // «% часу» = скільки з ВЛАСНИХ можливих хвилин гравець провів на полі:
+      // його матчі × 90 (або 120, якщо був овертайм). 10 матчів = 900 хв.
+      minutes_pct:
+        v.teamAllIds.size > 0
+          ? Math.round((v.minutes / (v.teamAllIds.size * 90)) * 1000) / 10
+          : 0,
       minutes_avg: v.all.apps > 0 ? Math.round(v.minutes / v.all.apps) : 0,
       ratingStart: avg(v.start),
       ratingSub: avg(v.sub),
       ratingAll: avg(v.all),
-      // Чи має гравець право на місце в рейтингу (достатньо залікових матчів).
       qualified: qualifiesForRank(v.matches, v.minutes),
-      // Велика зірка: чесне середнє зі своїх матчів (або старт в окремому режимі).
+      // Вінрейт: у скількох зі своїх матчів він грав — і скільки з них команда виграла.
+      winrate: v.teamAllIds.size > 0 ? Math.round((v.teamWinIds.size / v.teamAllIds.size) * 100) : 0,
+      winrateStarts: v.teamAllIds.size,
       season_rating: combine ? avg(v.all) : avg(v.start),
     }));
   }, [rows, checked, activeMonths, groups, combine]);
@@ -356,16 +359,10 @@ export default function SeasonTable({
           </div>
         )}
 
-        <p className="text-[11px] text-muted -mt-1 leading-relaxed">
-          Рейтинг — середня оцінка фанатів за матчі, в яких гравець відіграв {MIN_MINUTES_FOR_RATING}+ хвилин.
-          Матч на 90 хвилин важить більше, ніж вихід на 25. Місце в рейтингу отримує той, у кого таких
-          матчів {MIN_MATCHES_FOR_RANK}+ — тому один вдалий вихід не піднімає вище за основу.
-          {!combine && " Велика зірка — оцінка зі старту, мала в кутку — із замін."}
-        </p>
-      </div>
+     </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
-        <table className="w-full text-xs sm:text-sm sm:min-w-[640px]">
+        <table className="w-full text-xs sm:text-sm sm:min-w-[760px]">
           <thead>
             <tr className="bg-panel-raised text-muted eyebrow text-left">
               <th className="px-2 sm:px-5 py-3 font-normal">#</th>
@@ -378,14 +375,7 @@ export default function SeasonTable({
                     col.accent ? "text-gold-bright" : ""
                   }`}
                 >
-                  <span className="inline-flex flex-col items-end leading-tight">
-                    <span>{col.label}</span>
-                    {col.hint && (
-                      <span className="text-[9px] normal-case tracking-normal text-muted/60 font-normal">
-                        {col.hint}
-                      </span>
-                    )}
-                  </span>
+                  <span>{col.label}</span>
                   {sortKey === col.key && (sortDir === "desc" ? " ↓" : " ↑")}
                 </th>
               ))}
@@ -394,7 +384,7 @@ export default function SeasonTable({
           <tbody key={filterSig} className="divide-y divide-white/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-5 py-6 text-center text-muted">
+                <td colSpan={11} className="px-5 py-6 text-center text-muted">
                   {checked.size === 0 ? "Обери хоча б один турнір." : "Немає даних для обраних фільтрів."}
                 </td>
               </tr>
@@ -427,7 +417,7 @@ export default function SeasonTable({
                     <span className="relative inline-block">
                       {p.minutes}
                       {p.subMinutes > 0 && (
-                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none text-gold-bright font-bold">
+                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none font-bold text-[#FFD24A]">
                           {p.subMinutes}
                         </span>
                       )}
@@ -435,21 +425,29 @@ export default function SeasonTable({
                   </td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes_pct}%</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes_avg}</td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-gold/80">
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-champagne/90">
                     {/* Голи ВСЬОГО (разом з пенальті). Пенальті — маленька жовта
                         цифра внизу праворуч, як нижній індекс; position:absolute,
                         щоб не змінювати висоту рядка. */}
                     <span className="relative inline-block">
                       {p.goals}
                       {p.penaltyGoals > 0 && (
-                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none text-gold-bright font-bold">
+                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none font-bold text-[#FFD24A]">
                           {p.penaltyGoals}
                         </span>
                       )}
                     </span>
                   </td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-gold/80">{p.assists}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-champagne/90">{p.assists}</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.votes}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility">
+                    <span
+                      className="tabular-nums"
+                      style={{ color: p.winrate >= 60 ? "#5FD08A" : p.winrate <= 35 ? "#E07272" : undefined }}
+                    >
+                      {p.winrate}%
+                    </span>
+                  </td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right">
                     <span className="relative inline-flex">
                       {rc ? (
