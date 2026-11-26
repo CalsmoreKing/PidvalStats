@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ratingColor } from "@/lib/display";
 import { POSITION_GROUPS, PositionGroup, positionGroup } from "@/lib/positions";
+import { MIN_MINUTES_FOR_RATING, bayesRating, teamMean, TEAM_MEAN_FALLBACK } from "@/lib/season";
 
 // Один рядок = гравець в одному матчі (view season_player_matches). Усі
 // фільтри (турнір, місяць, позиція, старт/заміна) рахуються тут, з сирих
@@ -24,11 +25,12 @@ export type MatchRow = {
   rating: number | null; // середня оцінка фанатів за цей матч
 };
 
-type SortKey = "matches" | "goals" | "assists" | "votes" | "minutes" | "season_rating";
+type SortKey = "matches" | "goals" | "assists" | "votes" | "minutes" | "minutes_pct" | "season_rating";
 
 const columns: { key: SortKey; label: string }[] = [
   { key: "matches", label: "Матчі" },
   { key: "minutes", label: "Хвилини" },
+  { key: "minutes_pct", label: "% хвилин" },
   { key: "goals", label: "Голи" },
   { key: "assists", label: "Асисти" },
   { key: "votes", label: "Голоси" },
@@ -40,8 +42,8 @@ const MONTHS = [
   "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень",
 ];
 
-type Agg = { weighted: number; minutes: number };
-const emptyAgg = (): Agg => ({ weighted: 0, minutes: 0 });
+type Agg = { weighted: number; minutes: number; apps: number };
+const emptyAgg = (): Agg => ({ weighted: 0, minutes: 0, apps: 0 });
 const avg = (a: Agg) => (a.minutes > 0 ? Math.round((a.weighted / a.minutes) * 10) / 10 : null);
 
 export default function SeasonTable({
@@ -100,6 +102,7 @@ export default function SeasonTable({
         assists: number;
         votes: number;
         minutes: number;
+        subMinutes: number;
         all: Agg;
         start: Agg;
         sub: Agg;
@@ -124,19 +127,27 @@ export default function SeasonTable({
           assists: 0,
           votes: 0,
           minutes: 0,
+          subMinutes: 0,
           all: emptyAgg(),
           start: emptyAgg(),
           sub: emptyAgg(),
         };
-      if (r.rating != null) cur.matches += 1;
-      if (r.isStarting && r.rating != null) cur.starts += 1;
+      // Один матч іде в залік оцінки лише з 25+ хвилин (rating_min_minutes()).
+      const counted = r.rating != null && r.minutes >= MIN_MINUTES_FOR_RATING;
+      if (counted) cur.matches += 1;
+      if (r.isStarting && counted) cur.starts += 1;
       cur.goals += r.goals;
       cur.penaltyGoals += r.penaltyGoals;
       cur.assists += r.assists;
       cur.votes += r.votes;
       cur.minutes += r.minutes;
-      if (r.rating != null && r.minutes > 0) {
-        const w = r.rating * r.minutes;
+      if (!r.isStarting) cur.subMinutes += r.minutes;
+      // «% хвилин» — скільки з можарйтих хвилин гравець реально відіграв.
+      cur.all.apps += 1;
+      if (r.isStarting) cur.start.apps += 1;
+      else cur.sub.apps += 1;
+      if (counted && r.minutes > 0) {
+        const w = (r.rating ?? 0) * r.minutes;
         cur.all.weighted += w;
         cur.all.minutes += r.minutes;
         const bucket = r.isStarting ? cur.start : cur.sub;
@@ -145,24 +156,51 @@ export default function SeasonTable({
       }
       acc.set(r.id, cur);
     }
-    return Array.from(acc.entries()).map(([id, v]) => {
-      const ratingAll = avg(v.all);
-      const ratingStart = avg(v.start);
-      const ratingSub = avg(v.sub);
+    const list = Array.from(acc.entries()).map(([id, v]) => ({
+      id,
+      full_name: v.name,
+      matches: v.matches,
+      starts: v.starts,
+      goals: v.goals,
+      penaltyGoals: v.penaltyGoals,
+      assists: v.assists,
+      votes: v.votes,
+      minutes: v.minutes,
+      subMinutes: v.subMinutes,
+      // % відіграних хвилин: сума хвилин / (виходи × 90).
+      minutes_pct: v.all.apps > 0 ? Math.round((v.minutes / (v.all.apps * 90)) * 100) : 0,
+      ratingStart: avg(v.start),
+      ratingSub: avg(v.sub),
+      ratingAll: avg(v.all),
+      // скільки зіграних матчів пішло в оцінку — для Байєса
+      counted: v.all.minutes > 0 ? v.all.minutes : 0,
+      countedMatches: v.all.apps > 0 ? v.all.apps : 0,
+    }));
+
+    // Байєсівське згладжування: (n·mean + k·teamMean) / (n + k).
+    const mean = teamMean(list.map((r) => ({ matches: r.matches, rating: r.ratingAll })));
+    const tm = Number.isFinite(mean) ? mean : TEAM_MEAN_FALLBACK;
+
+    return list.map((r) => {
+      const smoothed = r.ratingAll != null
+        ? Math.round(bayesRating(r.matches, r.ratingAll, tm)! * 10) / 10
+        : null;
       return {
-        id,
-        full_name: v.name,
-        matches: v.matches,
-        starts: v.starts,
-        goals: v.goals,
-        penaltyGoals: v.penaltyGoals,
-        assists: v.assists,
-        votes: v.votes,
-        minutes: v.minutes,
-        ratingStart,
-        ratingSub,
-        // Що саме показує велика зірка: сума, або (в окремому режимі) старт
-        season_rating: combine ? ratingAll : ratingStart,
+        id: r.id,
+        full_name: r.full_name,
+        matches: r.matches,
+        starts: r.starts,
+        goals: r.goals,
+        penaltyGoals: r.penaltyGoals,
+        assists: r.assists,
+        votes: r.votes,
+        minutes: r.minutes,
+        subMinutes: r.subMinutes,
+        minutes_pct: r.minutes_pct,
+        ratingStart: r.ratingStart,
+        ratingSub: r.ratingSub,
+        // Велика зірка: згладжена сумарна оцінка, або (окремий режим) старт.
+        season_rating: combine ? smoothed : r.ratingStart,
       };
     });
   }, [rows, checked, activeMonths, groups, combine]);
@@ -306,6 +344,11 @@ export default function SeasonTable({
             Голи, асисти й хвилини рахуються разом.
           </p>
         )}
+        {combine && (
+          <p className="text-[11px] text-muted -mt-1">
+            Рейтинг — згладжена оцінка (Байєс, k=6) лише з матчів від {MIN_MINUTES_FOR_RATING} хвилин.
+          </p>
+        )}
       </div>
 
       <div className="rounded-xl border border-white/5 overflow-hidden overflow-x-auto">
@@ -329,7 +372,7 @@ export default function SeasonTable({
           <tbody key={filterSig} className="divide-y divide-white/5">
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-6 text-center text-muted">
+                <td colSpan={9} className="px-5 py-6 text-center text-muted">
                   {checked.size === 0 ? "Обери хоча б один турнір." : "Немає даних для обраних фільтрів."}
                 </td>
               </tr>
@@ -350,7 +393,19 @@ export default function SeasonTable({
                     </Link>
                   </td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.matches}</td>
-                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes}</td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">
+                    {/* Хвилини ВСЬОГО; хвилини із замін — маленька жовта цифра
+                        справа, як у Голах. Без title: не має бути ховера. */}
+                    <span className="relative inline-block">
+                      {p.minutes}
+                      {p.subMinutes > 0 && (
+                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none text-gold-bright font-bold">
+                          {p.subMinutes}
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">{p.minutes_pct}%</td>
                   <td className="px-2 sm:px-5 py-3 sm:py-4 text-right font-utility text-muted">
                     {/* Голи ВСЬОГО (разом з пенальті). Пенальті — маленька жовта
                         цифра внизу праворуч, як нижній індекс; position:absolute,
@@ -358,10 +413,7 @@ export default function SeasonTable({
                     <span className="relative inline-block">
                       {p.goals}
                       {p.penaltyGoals > 0 && (
-                        <span
-                          className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none text-gold-bright font-bold"
-                          title={`З них з пенальті: ${p.penaltyGoals}`}
-                        >
+                        <span className="absolute left-full bottom-[-5px] ml-0.5 text-[9px] leading-none text-gold-bright font-bold">
                           {p.penaltyGoals}
                         </span>
                       )}

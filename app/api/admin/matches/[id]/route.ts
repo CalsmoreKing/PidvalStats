@@ -26,6 +26,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     opponentName,
     opponentCrestUrl,
     isHome,
+    roundNumber,
+    refereePhotoUrl,
   } = await req.json();
   const supabase = createServiceClient();
 
@@ -41,6 +43,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (opponentCrestUrl !== undefined) patch.opponent_crest_url = String(opponentCrestUrl ?? "").trim() || null;
   if (isHome !== undefined) patch.is_home = !!isHome;
   if (venue !== undefined) patch.venue = String(venue ?? "").trim() || null;
+
+  // Тур: ручний номер фіксує рядок (round_locked), і тригер каскадно
+  // перетягує решту турів, щоб нумерація лишалась суцільною.
+  // null / "" — зняти фіксацію й віддати номер автоматиці.
+  if (roundNumber !== undefined) {
+    const n = roundNumber === null || roundNumber === "" ? null : Number(roundNumber);
+    patch.round_number = n == null || Number.isNaN(n) || n <= 0 ? null : Math.round(n);
+    patch.round_locked = patch.round_number != null;
+  }
 
   // Рефері/тренер: або обрали ІСНУЮЧОГО зі списку (refereeId/coachId) —
   // просто підтягуємо ім'я з бази, або вписали НОВОГО (referee/coachName —
@@ -60,6 +71,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return { id: created?.id ?? null, name };
     }
     return { id: null, name: null };
+  }
+  // Фото судді зберігається у самому записі referees (одна людина = одне
+  // фото), але редагується прямо тут, у виборі судді для матчу.
+  if (refereePhotoUrl !== undefined) {
+    const photo = String(refereePhotoUrl ?? "").trim() || null;
+    const targetId = refereeId && refereeId !== "__new__" ? refereeId : null;
+    if (targetId) {
+      await supabase.from("referees").update({ photo_url: photo }).eq("id", targetId);
+    } else if (referee) {
+      const { data: existing } = await supabase.from("referees").select("id").eq("name", String(referee).trim()).maybeSingle();
+      if (existing) await supabase.from("referees").update({ photo_url: photo }).eq("id", existing.id);
+      else await supabase.from("referees").insert({ name: String(referee).trim(), photo_url: photo });
+    }
   }
   if (refereeId !== undefined || referee !== undefined) {
     const r = await resolveStaff("referees", refereeId || null, referee || undefined);

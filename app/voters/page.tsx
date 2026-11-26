@@ -36,6 +36,12 @@ export default async function VotersPage() {
                   <div className="text-sm text-ivory truncate">{v.display_name}</div>
                   <div className="text-xs text-muted">
                     {v.matches_voted} {v.matches_voted === 1 ? "матч" : "матчів"} проголосовано
+                    {v.quality_matches != null && v.matches_voted > 0 && (
+                      <span className="text-gold/70">
+                        {" · "}
+                        {Math.round((v.quality_matches / v.matches_voted) * 100)}% не «плоских»
+                      </span>
+                    )}
                   </div>
                 </div>
                 {v.avg_rating_given != null && (

@@ -1,41 +1,57 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { bayesRating, teamMean, TEAM_MEAN_FALLBACK } from "@/lib/season";
 
 async function getFirstTeamId(supabase: ReturnType<typeof createServerSupabase>) {
   const { data } = await supabase.from("teams").select("id").eq("slug", "first_team").single();
   return data?.id as string | undefined;
 }
 
+// Згладжена оцінка гравця для головної/рейтингу: так само, як у /season —
+// (n·mean + k·teamMean) / (n + k), лише матчі від 25 хв (обрізано у view).
+async function smoothedRatings(
+  supabase: ReturnType<typeof createServerSupabase>
+): Promise<{ rating: Map<string, number>; matches: Map<string, number> }> {
+  const { data } = await supabase
+    .from("season_stats_by_competition")
+    .select("player_id, rating_weighted_sum, minutes_sum, matches_rated")
+    .neq("competition_slug", "friendly");
+  const byPlayer = new Map<string, { weightedSum: number; minutesSum: number; matches: number }>();
+  for (const row of data ?? []) {
+    const cur = byPlayer.get(row.player_id) ?? { weightedSum: 0, minutesSum: 0, matches: 0 };
+    cur.weightedSum += row.rating_weighted_sum ?? 0;
+    cur.minutesSum += row.minutes_sum ?? 0;
+    cur.matches += row.matches_rated ?? 0;
+    byPlayer.set(row.player_id, cur);
+  }
+  const rows = Array.from(byPlayer.entries()).map(([playerId, v]) => ({
+    playerId,
+    matches: v.matches,
+    rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
+  }));
+  const tm = teamMean(rows.map((r) => ({ matches: r.matches, rating: r.rating })));
+  const rating = new Map<string, number>();
+  const matches = new Map<string, number>();
+  for (const r of rows) {
+    if (r.rating == null) continue;
+    matches.set(r.playerId, r.matches);
+    const smoothed = bayesRating(r.matches, r.rating, Number.isFinite(tm) ? tm : TEAM_MEAN_FALLBACK);
+    if (smoothed != null) rating.set(r.playerId, Math.round(smoothed * 100) / 100);
+  }
+  return { rating, matches };
+}
+
 export async function getTopPlayers(limit = 3) {
   const supabase = createServerSupabase();
   const teamId = await getFirstTeamId(supabase);
 
-  // Рахуємо з season_stats_by_competition, виключаючи товариські — так само,
-  // як і за замовчуванням на /season. season_stats (весь сезон одразу) досі
-  // враховує товариські, тому тут його НЕ використовуємо.
-  const { data: rows, error } = await supabase
-    .from("season_stats_by_competition")
-    .select("player_id, competition_slug, rating_weighted_sum, minutes_sum")
-    .neq("competition_slug", "friendly");
-  if (error) {
-    console.error("getTopPlayers", error);
-    return [];
-  }
-
-  const byPlayer = new Map<string, { weightedSum: number; minutesSum: number }>();
-  for (const row of rows ?? []) {
-    const cur = byPlayer.get(row.player_id) ?? { weightedSum: 0, minutesSum: 0 };
-    cur.weightedSum += row.rating_weighted_sum ?? 0;
-    cur.minutesSum += row.minutes_sum ?? 0;
-    byPlayer.set(row.player_id, cur);
-  }
-  const ranked = Array.from(byPlayer.entries())
-    .map(([playerId, v]) => ({
-      playerId,
-      rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
-    }))
-    .filter((r): r is { playerId: string; rating: number } => r.rating != null)
-    .sort((a, b) => b.rating - a.rating)
+  // Рейтинг = та сама згладжена оцінка, що й у /season: матчі від 25 хв,
+  // Байєс k=6 відносно середнього по команді. Товариські не враховуються.
+  const { rating, matches } = await smoothedRatings(supabase);
+  const ranked = Array.from(rating.entries())
+    .map(([playerId, value]) => ({ playerId, rating: value, matches: matches.get(playerId) ?? 0 }))
+    .filter((r) => r.matches >= 2)
+    .sort((x, y) => y.rating - x.rating)
     .slice(0, limit);
 
   if (ranked.length === 0) return [];
@@ -50,7 +66,7 @@ export async function getTopPlayers(limit = 3) {
     .map((r) => {
       const p = players?.find((pl) => pl.id === r.playerId);
       if (!p) return null;
-      return { ...p, player_id: p.id, weighted_season_rating: Math.round(r.rating * 100) / 100 };
+      return { ...p, player_id: p.id, weighted_season_rating: r.rating };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
 }
@@ -59,33 +75,13 @@ export async function getBottomPlayers(limit = 3) {
   const supabase = createServerSupabase();
   const teamId = await getFirstTeamId(supabase);
 
-  const { data: rows, error } = await supabase
-    .from("season_stats_by_competition")
-    .select("player_id, competition_slug, rating_weighted_sum, minutes_sum, matches_rated")
-    .neq("competition_slug", "friendly");
-  if (error) {
-    console.error("getBottomPlayers", error);
-    return [];
-  }
-
-  const byPlayer = new Map<string, { weightedSum: number; minutesSum: number; matches: number }>();
-  for (const row of rows ?? []) {
-    const cur = byPlayer.get(row.player_id) ?? { weightedSum: 0, minutesSum: 0, matches: 0 };
-    cur.weightedSum += row.rating_weighted_sum ?? 0;
-    cur.minutesSum += row.minutes_sum ?? 0;
-    cur.matches += row.matches_rated ?? 0;
-    byPlayer.set(row.player_id, cur);
-  }
-  // Мінімум 2 оцінені матчі — щоб один невдалий вихід на 10 хв не ставив
-  // гравця автоматично "найгіршим сезону".
-  const ranked = Array.from(byPlayer.entries())
-    .map(([playerId, v]) => ({
-      playerId,
-      matches: v.matches,
-      rating: v.minutesSum > 0 ? v.weightedSum / v.minutesSum : null,
-    }))
-    .filter((r): r is { playerId: string; matches: number; rating: number } => r.rating != null && r.matches >= 2)
-    .sort((a, b) => a.rating - b.rating)
+  const { rating, matches } = await smoothedRatings(supabase);
+  // Мінімум 2 оцінені матчі — щоб один невдалий вихід не робив гравця
+  // автоматично «найгіршим сезону».
+  const ranked = Array.from(rating.entries())
+    .map(([playerId, value]) => ({ playerId, rating: value, matches: matches.get(playerId) ?? 0 }))
+    .filter((r) => r.matches >= 2)
+    .sort((x, y) => x.rating - y.rating)
     .slice(0, limit);
 
   if (ranked.length === 0) return [];
@@ -100,7 +96,7 @@ export async function getBottomPlayers(limit = 3) {
     .map((r) => {
       const p = players?.find((pl) => pl.id === r.playerId);
       if (!p) return null;
-      return { ...p, player_id: p.id, weighted_season_rating: Math.round(r.rating * 100) / 100 };
+      return { ...p, player_id: p.id, weighted_season_rating: r.rating };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
 }
@@ -154,7 +150,7 @@ export async function getAllMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, match_rating, voting_closes_at, voting_opens_at, is_extra_time, venue, referee, referee_id, coach_name, coach_id, competition_id, round_number, competitions(name, round_label)"
+      "id, opponent_name, opponent_crest_url, is_home, match_date, status, is_cancelled, home_score, away_score, match_rating, voting_closes_at, voting_opens_at, is_extra_time, venue, referee, referee_id, coach_name, coach_id, competition_id, round_number, competitions(name, round_label), referees(photo_url)"
     )
     .order("match_date", { ascending: false });
   if (error) {
@@ -287,9 +283,38 @@ export async function getPlayerProfile(playerId: string) {
     (a: any, b: any) => new Date(a.matches.match_date).getTime() - new Date(b.matches.match_date).getTime()
   );
 
+  // Оцінка профілю — та сама згладжена (Байєс k=6), що й у таблиці Сезону.
+  let season = seasonRow ?? null;
+  if (season?.weighted_season_rating != null) {
+    const { data: allRows } = await supabase
+      .from("season_stats_by_competition")
+      .select("player_id, rating_weighted_sum, minutes_sum, matches_rated")
+      .neq("competition_slug", "friendly");
+    const acc = new Map<string, { w: number; m: number; n: number }>();
+    for (const row of allRows ?? []) {
+      const cur = acc.get(row.player_id) ?? { w: 0, m: 0, n: 0 };
+      cur.w += row.rating_weighted_sum ?? 0;
+      cur.m += row.minutes_sum ?? 0;
+      cur.n += row.matches_rated ?? 0;
+      acc.set(row.player_id, cur);
+    }
+    const list = Array.from(acc.values()).map((v) => ({
+      matches: v.n,
+      rating: v.m > 0 ? v.w / v.m : null,
+    }));
+    const tm = teamMean(list);
+    const mine = acc.get(playerId);
+    if (mine && mine.m > 0) {
+      const smoothed = bayesRating(mine.n, mine.w / mine.m, Number.isFinite(tm) ? tm : TEAM_MEAN_FALLBACK);
+      if (smoothed != null) {
+        season = { ...season, weighted_season_rating: Math.round(smoothed * 10) / 10 };
+      }
+    }
+  }
+
   return {
     player,
-    season: seasonRow ?? null,
+    season,
     mvpAwards: mvpRow?.mvp_awards ?? 0,
     history,
   };
@@ -616,6 +641,9 @@ export async function getVoterActivity() {
   const { data, error } = await supabase
     .from("voter_activity")
     .select("*")
+    // Рейтинг фанатів: спершу ті, чиї голоси не «плоскі» (quality_matches),
+    // потім — за кількістю матчів.
+    .order("quality_matches", { ascending: false, nullsFirst: false })
     .order("matches_voted", { ascending: false })
     .limit(50);
   if (error) {

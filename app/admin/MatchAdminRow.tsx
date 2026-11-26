@@ -60,8 +60,8 @@ export default function MatchAdminRow({
   roster: RosterPlayer[];
   existingLineup: any[];
   competitions: { id: string; name: string }[];
-  referees: { id: string; name: string }[];
-  coaches: { id: string; name: string }[];
+  referees: { id: string; name: string; photo_url?: string | null }[];
+  coaches: { id: string; name: string; photo_url?: string | null }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -77,6 +77,10 @@ export default function MatchAdminRow({
   const [refereeNewName, setRefereeNewName] = useState("");
   const [coachSelId, setCoachSelId] = useState(match.coach_id ?? "");
   const [coachNewName, setCoachNewName] = useState("");
+  const [refereePhotoUrl, setRefereePhotoUrl] = useState(match.referees?.photo_url ?? "");
+  const [roundNumber, setRoundNumber] = useState<string>(
+    match.round_number != null ? String(match.round_number) : ""
+  );
   const [competitionId, setCompetitionId] = useState(match.competition_id ?? "");
   // datetime-local показує ЛОКАЛЬНИЙ час браузера. Раніше сюди клали UTC
   // (toISOString().slice(0,16)), а при збереженні читали як локальний — тож
@@ -231,6 +235,8 @@ export default function MatchAdminRow({
         opponentName,
         opponentCrestUrl,
         isHome,
+        roundNumber: roundNumber === "" ? null : Number(roundNumber),
+        refereePhotoUrl,
       }),
     });
     setSavingDetails(false);
@@ -429,21 +435,27 @@ export default function MatchAdminRow({
 
           {/* 3) Рівна сітка 2×2: Турнір · Стадіон / Тренер · Суддя */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field
-              label="Турнір"
-              hint={
-                match.round_number != null && match.competitions?.round_label
-                  ? `${match.competitions.round_label} ${match.round_number} — номер рахується автоматично`
-                  : undefined
-              }
-            >
-              <select value={competitionId} onChange={(e) => setCompetitionId(e.target.value)} className={inputCls}>
-                {competitions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+            <Field label="Турнір" hint="Номер туру можна змінити вручну — решта турів перенумеруються.">
+              <div className="flex gap-2">
+                <select value={competitionId} onChange={(e) => setCompetitionId(e.target.value)} className={inputCls}>
+                  {competitions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {match.competitions?.round_label && (
+                  <input
+                    type="number"
+                    min={1}
+                    value={roundNumber}
+                    onChange={(e) => setRoundNumber(e.target.value)}
+                    placeholder="Тур"
+                    title="Номер туру; порожньо — рахувати автоматично"
+                    className={`${inputCls} w-20 shrink-0 text-center`}
+                  />
+                )}
+              </div>
             </Field>
             <Field label="Стадіон">
               <input
@@ -470,9 +482,14 @@ export default function MatchAdminRow({
                 newLabel="новий суддя"
                 staff={referees}
                 selectedId={refereeSelId}
-                onSelectId={setRefereeSelId}
+                onSelectId={(id) => {
+                  setRefereeSelId(id);
+                  setRefereePhotoUrl(referees.find((r) => r.id === id)?.photo_url ?? "");
+                }}
                 newName={refereeNewName}
                 onNewName={setRefereeNewName}
+                photoUrl={refereePhotoUrl}
+                onPhotoUrl={setRefereePhotoUrl}
               />
             </Field>
           </div>
