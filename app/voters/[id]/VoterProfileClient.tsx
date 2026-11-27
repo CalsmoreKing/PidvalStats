@@ -42,13 +42,12 @@ export default function VoterProfileClient({
   // За замовчуванням товариські сховані — інакше давно завершені товариські
   // спотворюють "кому ставить найнижче" гравцями дублю, яких викликали на
   // одну гру.
-  const [showFriendly, setShowFriendly] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
-  const hasFriendly = history.some((r) => r.competition_slug === "friendly");
+  // Товариські не враховуємо ніде — дивимось лише офіційні матчі сезону.
   const filtered = useMemo(
-    () => (showFriendly ? history : history.filter((r) => r.competition_slug !== "friendly")),
-    [history, showFriendly]
+    () => history.filter((r) => r.competition_slug !== "friendly"),
+    [history]
   );
 
   const histogram = useMemo(() => {
@@ -144,17 +143,6 @@ export default function VoterProfileClient({
             <h1 className="font-display text-2xl text-ivory">{voter.displayName}</h1>
           </div>
           <div className="ml-auto flex items-center gap-3 mb-2">
-            {hasFriendly && (
-              <label className="flex items-center gap-1.5 text-[11px] text-muted cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showFriendly}
-                  onChange={(e) => setShowFriendly(e.target.checked)}
-                  className="accent-gold"
-                />
-                Показати товариські
-              </label>
-            )}
             {isOwner && (
               <Link
                 href="/settings"
@@ -171,9 +159,7 @@ export default function VoterProfileClient({
         <p className="text-sm text-muted">Цей фанат вирішив не показувати свої оцінки іншим.</p>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted">
-          {history.length > 0
-            ? "Немає голосів по офіційних матчах — спробуй увімкнути товариські."
-            : "Ще немає голосів по завершених матчах — з'являться тут одразу після підрахунку."}
+          Ще немає голосів по завершених матчах — з'являться тут одразу після підрахунку.
         </p>
       ) : (
         <>

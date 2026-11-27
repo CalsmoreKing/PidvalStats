@@ -713,9 +713,10 @@ async function finalizedMatchStats() {
   const supabase = createServerSupabase();
   const { data } = await supabase
     .from("matches")
-    .select("id")
+    .select("id, competitions!inner(slug)")
     .eq("status", "finalized")
-    .eq("is_cancelled", false);
+    .eq("is_cancelled", false)
+    .neq("competitions.slug", "friendly");
   const ids = new Set((data ?? []).map((m: any) => m.id));
   return { total: ids.size, ids };
 }

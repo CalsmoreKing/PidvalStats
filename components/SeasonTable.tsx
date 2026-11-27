@@ -190,10 +190,8 @@ export default function SeasonTable({
       subMinutes: v.subMinutes,
       // «% часу» = скільки з ВЛАСНИХ можливих хвилин гравець провів на полі:
       // його матчі × 90 (або 120, якщо був овертайм). 10 матчів = 900 хв.
-      minutes_pct:
-        v.teamAllIds.size > 0
-          ? Math.round((v.minutes / (v.teamAllIds.size * 90)) * 1000) / 10
-          : 0,
+      // Округлення до цілого — без десятих.
+      minutes_pct: v.teamAllIds.size > 0 ? Math.round((v.minutes / (v.teamAllIds.size * 90)) * 100) : 0,
       minutes_avg: v.all.apps > 0 ? Math.round(v.minutes / v.all.apps) : 0,
       ratingStart: avg(v.start),
       ratingSub: avg(v.sub),
@@ -262,8 +260,8 @@ export default function SeasonTable({
       on ? "bg-panel-raised border-gold/40 text-gold-bright" : "border-white/10 text-muted hover:border-white/25"
     }`;
 
+  // Товариські не показуємо взагалі — рахуємо лише офіційні турніри.
   const officialComps = competitions.filter((c) => c.slug !== "friendly");
-  const friendlyComps = competitions.filter((c) => c.slug === "friendly");
 
   return (
     <div>
@@ -277,7 +275,7 @@ export default function SeasonTable({
           >
             Всі
           </button>
-          {[...officialComps, ...friendlyComps].map((c) => (
+          {officialComps.map((c) => (
             <button key={c.id} onClick={() => toggle(setChecked, c.slug)} className={pill(checked.has(c.slug))}>
               {c.name}
             </button>

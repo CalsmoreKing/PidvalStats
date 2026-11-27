@@ -23,7 +23,6 @@ export default async function VotersPage() {
   const totalRatings = voters.reduce((s, v) => s + Number(v.total_ratings_given ?? 0), 0);
   const withAvg = voters.filter((v) => v.avg_rating_given != null);
   const avgAll = withAvg.length > 0 ? withAvg.reduce((s, v) => s + (v.avg_rating_given ?? 0), 0) / withAvg.length : null;
-  const bestCoverage = voters.reduce((max, v) => (v.coverage > max ? v.coverage : max), 0);
   const leaders = [...voters].sort((a, b) => b.matches_voted - a.matches_voted).slice(0, 3);
 
   return (
@@ -38,16 +37,6 @@ export default async function VotersPage() {
           <Stat value={totalRatings.toLocaleString("uk-UA")} label="оцінок" />
           <Stat value={totalMatches} label="матчів сезону" />
           <Stat value={avgAll != null ? avgAll.toFixed(2) : "—"} label="середня оцінка" />
-        </div>
-        <div className="mt-4 h-1 rounded-full bg-white/5 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-gold/40 to-gold-bright"
-            style={{ width: `${Math.min(100, bestCoverage)}%` }}
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
-          <span>найактивніший фанат відвідав {bestCoverage}% матчів сезону</span>
-          <span>{voters.length > 0 ? `${voters.filter((v) => v.coverage >= 100).length} з повним покриттям` : ""}</span>
         </div>
       </div>
 
