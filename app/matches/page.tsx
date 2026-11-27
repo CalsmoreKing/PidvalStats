@@ -215,12 +215,14 @@ export default async function MatchesPage() {
                 <span className="text-[11px] text-muted">ще {futureRest.length}</span>
               </div>
               <div className="flex flex-col gap-3">
-                {Array.from(futureByMonth.entries()).map(([key, list]) => (
+                {Array.from(futureByMonth.entries()).map(([key, list], i) => (
                   <MonthAccordion
                     key={key}
                     label={formatMonth(key)}
                     countLabel={`${list.length} ${list.length === 1 ? "матч" : "матчі"}`}
-                    defaultOpen={key === nextMonth}
+                    // Відкритий завжди той місяць, у якому найближчий матч;
+                    // якщо в ньому більше немає ігор — перший місяць зі списку.
+                    defaultOpen={key === nextMonth || i === 0}
                   >
                     {list.map((m: any) => (
                       <MatchCard key={m.id} match={m} isNext={false} teamCrest={teamCrest} />
